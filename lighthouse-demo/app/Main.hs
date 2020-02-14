@@ -3,6 +3,7 @@ module Main where
 
 import Lighthouse.Authentication
 import Lighthouse.Connection
+import System.Environment (getArgs)
 
 main :: IO ()
 main = do

@@ -14,4 +14,4 @@ type LighthouseIO a = ReaderT ConnectionState IO a
 runLighthouseIO :: LighthouseIO a -> Authentication -> IO a
 runLighthouseIO lio auth = withSocketsDo $ WS.runClient "lighthouse.uni-kiel.de" 80 path
                                          $ \conn -> runReaderT lio $ ConnectionState { wsConnection = conn, lhAuth = auth }
-    where path = "/user/" ++ show (username auth) ++ "/model"
+    where path = "/user/" ++ username auth ++ "/model"
