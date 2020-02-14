@@ -37,15 +37,15 @@ randomRM :: (RandomGen g, Random a) => (a, a) -> RandomM g a
 randomRM r = RandomM $ randomR r
 
 -- | Generates n random values in the given range without consuming the generator.
-nRandomsR :: (RandomGen g, Random a) => Int -> ([a], [a]) -> g -> ([a], g)
-nRandomsR 0 _ g     = ([], g)
-nRandomsR n ((l:ls), (h:hs)) g = (x:xs, g'')
-    where (x, g') = randomR (l, h) g
-          (xs, g'') = nRandomsR (n - 1) (ls, hs) g'
+nRandomsR :: (RandomGen g, Random a) => Int -> ([a], [a]) -> RandomM g [a]
+nRandomsR 0 _ = return []
+nRandomsR n ((l:ls), (h:hs)) = do
+    x <- randomRM (l, h)
+    (x:) <$> nRandomsR (n - 1) (ls, hs)
 
 -- | Generates n random values without consuming the generator.
-nRandoms :: (RandomGen g, Random a) => Int -> g -> ([a], g)
-nRandoms 0 g = ([], g)
-nRandoms n g = (x:xs, g'')
-    where (x, g') = random g
-          (xs, g'') = nRandoms (n - 1) g'
+nRandoms :: (RandomGen g, Random a) => Int -> RandomM g [a]
+nRandoms 0 = return []
+nRandoms n = do
+    x <- randomM
+    (x:) <$> nRandoms (n - 1)

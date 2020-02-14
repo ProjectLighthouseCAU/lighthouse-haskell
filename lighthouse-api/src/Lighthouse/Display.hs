@@ -41,12 +41,12 @@ displayToList :: Display -> [Row]
 displayToList (Display xs) = xs
 
 instance Random Display where
-    random g = Display <.$> nRandoms lighthouseRows g
-    randomR r g = Display <.$> nRandomsR lighthouseRows (displayToList <.$.> r) g
+    random    = runRandomM $ Display <$> nRandoms lighthouseRows
+    randomR r = runRandomM $ Display <$> nRandomsR lighthouseRows (displayToList <.$.> r)
 
 instance Random Row where
-    random g = Row <.$> nRandoms lighthouseCols g
-    randomR r g = Row <.$> nRandomsR lighthouseCols (rowToList <.$.> r) g
+    random    = runRandomM $ Row <$> nRandoms lighthouseCols
+    randomR r = runRandomM $ Row <$> nRandomsR lighthouseCols (rowToList <.$.> r)
 
 -- | Converts a display to a binary representation.
 instance Serializable Display where
