@@ -1,11 +1,20 @@
-module Lighthouse.Utils.General (fst3, snd3, thd3, (<.$>), (<$.>), (<.$.>)) where
+module Lighthouse.Utils.General (fst3, snd3, thd3, liftMaybe, (<.$>), (<$.>), (<.$.>)) where
 
+import Control.Monad.Trans.Maybe
+
+-- | Lifts an optional value into the maybe transformer.
+liftMaybe :: Monad m => Maybe a -> MaybeT m a
+liftMaybe = MaybeT . return
+
+-- | Fetches the first element of a triple.
 fst3 :: (a, b, c) -> a
 fst3 (x, _, _) = x
 
+-- | Fetches the second element of a triple.
 snd3 :: (a, b, c) -> b
 snd3 (_, y, _) = y
 
+-- | Fetches the third element of a triple.
 thd3 :: (a, b, c) -> c
 thd3 (_, _, z) = z
 
