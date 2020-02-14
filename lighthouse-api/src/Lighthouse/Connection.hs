@@ -7,7 +7,7 @@ import qualified Data.Text as T
 import Lighthouse.Authentication
 import Lighthouse.Display
 import Lighthouse.Protocol
-import Lighthouse.Utils
+import Lighthouse.Utils.Serializable
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified Wuss as WSS

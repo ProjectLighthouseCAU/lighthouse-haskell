@@ -6,7 +6,7 @@ import qualified Data.MessagePack as MP
 import qualified Data.Vector as V
 import Lighthouse.Authentication
 import Lighthouse.Display
-import Lighthouse.Utils
+import Lighthouse.Utils.Serializable
 
 data DisplayRequest = DisplayRequest { display :: Display, authentication :: Authentication }
 
