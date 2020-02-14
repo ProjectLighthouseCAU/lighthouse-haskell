@@ -1,10 +1,12 @@
 module Lighthouse.Utils.Color where
 
-import Lighthouse.Utils.General (fst3, snd3, thd3)
+import qualified Data.ByteString.Lazy as BL
+import Lighthouse.Utils.Serializable
 import System.Random
 
 -- | An RGB color.
 data Color = Color Int Int Int
+    deriving (Show, Eq)
 
 instance Random Color where
     random gen = (Color r g b, gen3)
@@ -16,6 +18,12 @@ instance Random Color where
         where (r, gen1) = randomR (lr, hr) gen
               (g, gen2) = randomR (lg, hg) gen1
               (b, gen3) = randomR (lb, hb) gen2
+
+instance Serializable Color where
+    serialize (Color r g b) = BL.pack [r', g', b']
+        where r' = fromIntegral r
+              g' = fromIntegral g
+              b' = fromIntegral b
 
 black :: Color
 black = Color 0 0 0

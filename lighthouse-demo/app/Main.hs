@@ -1,16 +1,19 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
+import Control.Monad.Trans (liftIO)
 import qualified Data.Text as T
 import Lighthouse.Authentication
 import Lighthouse.Connection
 import Lighthouse.Display (coloredDisplay)
 import Lighthouse.Utils.Color
 import System.Environment (getArgs)
+import System.Random
 
 app :: LighthouseIO ()
 app = do
-    sendDisplay $ coloredDisplay yellow
+    display <- liftIO $ randomIO
+    sendDisplay display
     sendClose
 
 main :: IO ()
