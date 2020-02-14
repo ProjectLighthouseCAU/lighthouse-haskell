@@ -6,12 +6,13 @@ import Lighthouse.Authentication
 import Lighthouse.Connection
 import System.Environment (getArgs)
 
+app :: LighthouseIO ()
+app = do
+    sendClose
+
 main :: IO ()
 main = do
     args <- getArgs
     case args of
         [username, token] -> runLighthouseIO app $ Authentication { username = T.pack username, token = T.pack token }
         _ -> putStrLn "Arguments: [api username] [api token]"
-
-app :: LighthouseIO ()
-app = return ()
