@@ -1,7 +1,21 @@
 module Lighthouse.Utils.Color where
 
+import Lighthouse.Utils.General (fst3, snd3, thd3)
+import System.Random
+
 -- | An RGB color.
 data Color = Color Int Int Int
+
+instance Random Color where
+    random gen = (Color r g b, gen3)
+        where (r, gen1) = next gen
+              (g, gen2) = next gen1
+              (b, gen3) = next gen2
+    
+    randomR (Color lr lg lb, Color hr hg hb) gen = (Color r g b, gen3)
+        where (r, gen1) = randomR (lr, hr) gen
+              (g, gen2) = randomR (lg, hg) gen1
+              (b, gen3) = randomR (lb, hb) gen2
 
 black :: Color
 black = Color 0 0 0
