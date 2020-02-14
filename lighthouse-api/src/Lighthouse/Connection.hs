@@ -1,6 +1,7 @@
 module Lighthouse.Connection (LighthouseIO (..), runLighthouseIO) where
 
 import Control.Monad.Trans.Reader
+import qualified Data.Text as T
 import Lighthouse.Authentication
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
@@ -15,4 +16,4 @@ type LighthouseIO a = ReaderT ConnectionState IO a
 runLighthouseIO :: LighthouseIO a -> Authentication -> IO a
 runLighthouseIO lio auth = withSocketsDo $ WSS.runSecureClient "lighthouse.uni-kiel.de" 443 path
                                          $ \conn -> runReaderT lio $ ConnectionState { wsConnection = conn, lhAuth = auth }
-    where path = "/user/" ++ username auth ++ "/model"
+    where path = "/user/" ++ T.unpack (username auth) ++ "/model"
