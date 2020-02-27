@@ -1,4 +1,4 @@
-module Lighthouse.Utils.General (fst3, snd3, thd3, liftMaybe, (<.$>), (<$.>), (<.$.>)) where
+module Lighthouse.Utils.General (fst3, snd3, thd3, liftMaybe, (<.$>), (<$.>), (<.$.>), pair) where
 
 import Control.Monad.Trans.Maybe
 
@@ -29,3 +29,7 @@ f <$.> (x, y) = (x, f y)
 -- | Maps over both elements of a pair.
 (<.$.>) :: (a -> b) -> (a, a) -> (b, b)
 (<.$.>) f = (f <$.>) . (f <.$>)
+
+-- | Creates a pair.
+pair :: a -> b -> (a, b)
+pair x y = (x, y)

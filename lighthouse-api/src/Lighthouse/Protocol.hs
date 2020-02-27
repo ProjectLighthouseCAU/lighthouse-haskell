@@ -9,6 +9,7 @@ import qualified Data.Vector as V
 import Lighthouse.Authentication
 import Lighthouse.Display
 import Lighthouse.Event
+import Lighthouse.Utils.General
 import Lighthouse.Utils.Serializable
 
 -- ======= CLIENT -> SERVER MESSAGES =======
@@ -75,9 +76,10 @@ instance MPDeserializable KeyEvent where
     mpDeserialize (MP.ObjectMap vo) = do
         let o = V.toList vo
         src <- MP.fromObject =<< lookup (MP.ObjectStr "src") o
-        key <- MP.fromObject =<< lookup (MP.ObjectStr "key") o <|> lookup (MP.ObjectStr "btn") o
+        (isController, mpKey) <- (pair False <$> lookup (MP.ObjectStr "key") o) <|> (pair True <$> lookup (MP.ObjectStr "btn") o)
+        key <- MP.fromObject mpKey
         dwn <- MP.fromObject =<< lookup (MP.ObjectStr "dwn") o
-        return $ KeyEvent { eventSource = src, eventKey = key, eventPressed = dwn }
+        return $ KeyEvent { eventSource = src, eventKey = key, eventPressed = dwn, eventIsController = isController }
     mpDeserialize _ = Nothing
 
 instance MPDeserializable a => Deserializable (FromServerMessage a) where

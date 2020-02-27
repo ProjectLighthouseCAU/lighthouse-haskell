@@ -1,10 +1,9 @@
-module Lighthouse.Event (Listener (..), KeyEvent (..)) where
+module Lighthouse.Event (KeyEvent (..)) where
 
--- A listener for keyboard/controller events fired from the web interface.
-data Listener e = Listener { keyboardEvent :: e -> IO (),
-                             controllerEvent :: e -> IO () }
+import Control.Monad.Trans.State
 
--- A key event emitted via the web interface.
+-- A key/controller event emitted via the web interface.
 data KeyEvent = KeyEvent { eventSource :: Int,
                            eventKey :: Int,
-                           eventPressed :: Bool }
+                           eventPressed :: Bool,
+                           eventIsController :: Bool }

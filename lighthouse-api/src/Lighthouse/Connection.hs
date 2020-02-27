@@ -14,9 +14,6 @@ import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified Wuss as WSS
 
--- TODO: Maintain a list of listeners that get notified of key events
---       in this state and use forkIO to receive events from the connection
---       in an infinite loop (using forever).
 data ConnectionState = ConnectionState { wsConnection :: WS.Connection, lhAuth :: Authentication }
 
 -- | The central IO monad to be used by Lighthouse applications. Holds a connection.
