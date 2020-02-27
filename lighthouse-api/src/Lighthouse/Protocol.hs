@@ -8,7 +8,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import Lighthouse.Authentication
 import Lighthouse.Display
-import Lighthouse.Listener
+import Lighthouse.Event
 import Lighthouse.Utils.Serializable
 
 -- ======= CLIENT -> SERVER MESSAGES =======

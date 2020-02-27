@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Lighthouse.Connection (LighthouseIO (..), runLighthouseIO, sendDisplay, sendClose) where
 
 import Control.Monad.Trans (liftIO)
@@ -6,6 +7,7 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import Lighthouse.Authentication
 import Lighthouse.Display
+import Lighthouse.Event
 import Lighthouse.Protocol
 import Lighthouse.Utils.Serializable
 import Network.Socket (withSocketsDo)
@@ -34,6 +36,18 @@ sendDisplay :: Display -> LighthouseIO ()
 sendDisplay d = do
     auth <- lhAuth <$> ask
     sendBinaryData $ serialize $ displayRequest auth d
+
+-- | Receives a batch of key event from the Lighthouse.
+receiveKeyEvents :: LighthouseIO [KeyEvent]
+receiveKeyEvents = do
+    conn <- wsConnection <$> ask
+    dat <- liftIO $ WS.receiveData conn
+    case deserialize dat of
+        Just (FromServerRequest {..}) -> return $ fsPayload
+        Just (FromServerResponse {..}) -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack fsError
+                                             return []
+        Nothing -> do liftIO $ putStrLn "Got unrecognized message from server"
+                      return []
 
 -- | Sends a close message.
 sendClose :: LighthouseIO ()

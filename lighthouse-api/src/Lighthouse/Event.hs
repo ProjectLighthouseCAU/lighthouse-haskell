@@ -1,4 +1,4 @@
-module Lighthouse.Listener (Listener (..), KeyEvent (..)) where
+module Lighthouse.Event (Listener (..), KeyEvent (..)) where
 
 -- A listener for keyboard/controller events fired from the web interface.
 data Listener e = Listener { keyboardEvent :: e -> IO (),
