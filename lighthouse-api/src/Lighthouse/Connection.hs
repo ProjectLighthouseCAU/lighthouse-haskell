@@ -33,7 +33,7 @@ sendBinaryData d = do
 sendDisplay :: Display -> LighthouseIO ()
 sendDisplay d = do
     auth <- lhAuth <$> ask
-    sendBinaryData $ serialize $ DisplayRequest { display = d, authentication = auth }
+    sendBinaryData $ serialize $ displayRequest auth d
 
 -- | Sends a close message.
 sendClose :: LighthouseIO ()
