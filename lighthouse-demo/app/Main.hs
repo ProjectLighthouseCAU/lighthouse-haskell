@@ -16,7 +16,7 @@ import System.Environment (getArgs)
 import System.Random
 
 -- | Renders a single image to the lighthouse.
-app :: String -> LighthouseIO ()
+app :: String -> LighthouseIO () ()
 app imagePath = do
     res <- runExceptT $ do
         dimg <- liftEither =<< (liftIO $ P.readPng imagePath)
