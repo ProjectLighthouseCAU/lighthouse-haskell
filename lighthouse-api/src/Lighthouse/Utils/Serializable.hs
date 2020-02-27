@@ -1,4 +1,4 @@
-module Lighthouse.Utils.Serializable (Serializable (..)) where
+module Lighthouse.Utils.Serializable (Serializable (..), Deserializable (..)) where
 
 import qualified Data.ByteString.Lazy as BL
 
