@@ -34,7 +34,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - lighthouse-api
+    - lighthouse-client
 
 # tests:
 #   lighthouse-demo-test:

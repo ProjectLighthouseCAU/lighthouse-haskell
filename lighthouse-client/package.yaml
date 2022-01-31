@@ -1,4 +1,4 @@
-name:                lighthouse-api
+name:                lighthouse-client
 version:             0.1.0.0
 github:              "fwcd/project-lighthouse-haskell"
 license:             BSD3
@@ -34,7 +34,7 @@ library:
   source-dirs: src
 
 # executables:
-#   lighthouse-api-exe:
+#   lighthouse-client-exe:
 #     main:                Main.hs
 #     source-dirs:         app
 #     ghc-options:
@@ -42,10 +42,10 @@ library:
 #     - -rtsopts
 #     - -with-rtsopts=-N
 #     dependencies:
-#     - lighthouse-api
+#     - lighthouse-client
 
 tests:
-  lighthouse-api-test:
+  lighthouse-client-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -53,4 +53,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - lighthouse-api
+    - lighthouse-client

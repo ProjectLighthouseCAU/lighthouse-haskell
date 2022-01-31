@@ -5,7 +5,7 @@ resolver: lts-18.23
 
 # User packages to be built.
 packages:
-- lighthouse-api
+- lighthouse-client
 - lighthouse-demo
 
 extra-deps:
