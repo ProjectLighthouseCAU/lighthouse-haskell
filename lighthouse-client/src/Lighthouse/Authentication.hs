@@ -1,4 +1,6 @@
-module Lighthouse.Authentication (Authentication (..)) where
+module Lighthouse.Authentication
+    ( Authentication (..)
+    ) where
 
 import qualified Data.Text as T
 

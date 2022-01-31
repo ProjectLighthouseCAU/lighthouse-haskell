@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import qualified Codec.Picture as P
@@ -19,7 +18,7 @@ import System.Random
 app :: String -> LighthouseIO ()
 app imagePath = do
     res <- runExceptT $ do
-        dimg <- liftEither =<< (liftIO $ P.readPng imagePath)
+        dimg <- liftEither =<< liftIO (P.readPng imagePath)
         d <- liftEither $ dynImgToDisplay dimg
         lift $ sendDisplay d
         

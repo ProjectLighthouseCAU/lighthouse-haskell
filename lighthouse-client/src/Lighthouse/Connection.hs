@@ -46,9 +46,9 @@ receiveKeyEvents = do
     conn <- wsConnection <$> get
     dat <- liftIO $ WS.receiveData conn
     case deserialize dat of
-        Just (FromServerRequest {..}) -> return $ fsPayload
-        Just (FromServerResponse {..}) -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack fsError
-                                             return []
+        Just FromServerRequest {..} -> return fsPayload
+        Just FromServerResponse {..} -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack fsError
+                                           return []
         Nothing -> do liftIO $ putStrLn "Got unrecognized message from server"
                       return []
 

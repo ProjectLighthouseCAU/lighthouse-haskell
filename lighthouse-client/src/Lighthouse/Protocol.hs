@@ -1,7 +1,11 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
-module Lighthouse.Protocol where
+module Lighthouse.Protocol
+    ( FromClientMessage (..), FromServerMessage (..)
+    , displayRequest, controllerStreamRequest
+    ) where
 
 import Control.Applicative ((<|>))
+import Control.Monad ((<=<))
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
@@ -20,12 +24,14 @@ class MPSerializable a where
     mpSerialize :: a -> MP.Object
 
 instance MPSerializable a => MPSerializable (FromClientMessage a) where
-    mpSerialize FromClientRequest {..} = MP.ObjectMap $ V.fromList [(MP.ObjectStr "REID", MP.ObjectInt 0),
-                                                                    (MP.ObjectStr "VERB", MP.ObjectStr "PUT"),
-                                                                    (MP.ObjectStr "PATH", MP.toObject $ (["user", "model"] :: [T.Text])),
-                                                                    (MP.ObjectStr "AUTH", MP.toObject $ ([("USER", username), ("TOKEN", token)] :: [(T.Text, T.Text)])),
-                                                                    (MP.ObjectStr "META", MP.ObjectMap V.empty),
-                                                                    (MP.ObjectStr "PAYL", mpSerialize fcPayload)]
+    mpSerialize FromClientRequest {..} = MP.ObjectMap $ V.fromList
+        [ (MP.ObjectStr "REID", MP.ObjectInt 0)
+        , (MP.ObjectStr "VERB", MP.ObjectStr "PUT")
+        , (MP.ObjectStr "PATH", MP.toObject (["user", "model"] :: [T.Text]))
+        , (MP.ObjectStr "AUTH", MP.toObject ([("USER", username), ("TOKEN", token)] :: [(T.Text, T.Text)]))
+        , (MP.ObjectStr "META", MP.ObjectMap V.empty)
+        , (MP.ObjectStr "PAYL", mpSerialize fcPayload)
+        ]
         where Authentication {..} = fcAuthentication
 
 instance MPSerializable a => Serializable (FromClientMessage a) where
@@ -81,4 +87,4 @@ instance MPDeserializable KeyEvent where
     mpDeserialize _ = Nothing
 
 instance MPDeserializable a => Deserializable (FromServerMessage a) where
-    deserialize = (mpDeserialize =<<) . MP.unpack
+    deserialize = mpDeserialize <=< MP.unpack

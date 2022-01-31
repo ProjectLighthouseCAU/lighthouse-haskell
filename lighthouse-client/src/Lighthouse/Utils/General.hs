@@ -1,4 +1,8 @@
-module Lighthouse.Utils.General (fst3, snd3, thd3, liftMaybe, (<.$>), (<$.>), (<.$.>)) where
+module Lighthouse.Utils.General
+    ( fst3, snd3, thd3
+    , liftMaybe
+    , (<.$>), (<$.>), (<.$.>)
+    ) where
 
 import Control.Monad.Trans.Maybe
 

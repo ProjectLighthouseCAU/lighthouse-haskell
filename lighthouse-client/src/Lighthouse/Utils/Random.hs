@@ -1,15 +1,19 @@
-module Lighthouse.Utils.Random (RandomM (..), runRandomMIO, getRandomGen, randomM, randomRM, nRandomsR, nRandoms) where
+{-# LANGUAGE TupleSections #-}
+module Lighthouse.Utils.Random
+    ( RandomM (..)
+    , runRandomMIO, getRandomGen, randomM, randomRM, nRandomsR, nRandoms
+    ) where
 
 import System.Random
 
-data RandomM g a = RandomM { runRandomM :: g -> (a, g) }
+newtype RandomM g a = RandomM { runRandomM :: g -> (a, g) }
 
 instance Functor (RandomM g) where
     fmap f r = RandomM $ \g -> let (x, g') = runRandomM r g
                                in (f x, g')
 
 instance Applicative (RandomM g) where
-    pure x = RandomM $ \g -> (x, g)
+    pure x = RandomM (x,)
     rf <*> r = RandomM $ \g -> let (x, g') = runRandomM r g
                                    (f, g'') = runRandomM rf g'
                                in (f x, g'')
@@ -20,9 +24,7 @@ instance Monad (RandomM g) where
 
 -- | Runs a random monad using the global RNG.
 runRandomMIO :: RandomM StdGen a -> IO a
-runRandomMIO r = do
-    gen <- getStdGen
-    return $ fst $ runRandomM r gen
+runRandomMIO r = fst . runRandomM r <$> getStdGen
 
 -- | Fetches the generator inside the random monad.
 getRandomGen :: RandomM g g
@@ -39,9 +41,10 @@ randomRM r = RandomM $ randomR r
 -- | Generates n random values in the given range without consuming the generator.
 nRandomsR :: (RandomGen g, Random a) => Int -> ([a], [a]) -> RandomM g [a]
 nRandomsR 0 _ = return []
-nRandomsR n ((l:ls), (h:hs)) = do
+nRandomsR n (l:ls, h:hs) = do
     x <- randomRM (l, h)
     (x:) <$> nRandomsR (n - 1) (ls, hs)
+nRandomsR n _ = error $ "No range(s) for remaining " ++ show n ++ " random value(s)!"
 
 -- | Generates n random values without consuming the generator.
 nRandoms :: (RandomGen g, Random a) => Int -> RandomM g [a]

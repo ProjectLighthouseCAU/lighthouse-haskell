@@ -1,10 +1,8 @@
-module Lighthouse.Display (
-    lighthouseRows, lighthouseCols,
-    emptyDisplay, coloredDisplay,
-    Color (..),
-    Display (..),
-    Row (..)
-) where
+module Lighthouse.Display
+    ( lighthouseRows, lighthouseCols
+    , emptyDisplay, coloredDisplay
+    , Color (..), Display (..), Row (..)
+    ) where
 
 import Control.Monad (join)
 import qualified Data.ByteString.Lazy as BL
@@ -32,7 +30,7 @@ emptyDisplay = coloredDisplay black
 
 -- | A display with a uniformly colored background.
 coloredDisplay :: Color -> Display
-coloredDisplay c = Display $ const (Row $ const c <$> [0..lighthouseCols]) <$> [0..lighthouseRows]
+coloredDisplay c = Display $ Row (c <$ [0..lighthouseCols]) <$ [0..lighthouseRows]
 
 rowToList :: Row -> [Color]
 rowToList (Row xs) = xs
