@@ -26,7 +26,7 @@ type LighthouseIO a = StateT ConnectionState IO a
 runLighthouseIO :: LighthouseIO a -> Authentication -> IO a
 runLighthouseIO lio auth = withSocketsDo $ WSS.runSecureClient "lighthouse.uni-kiel.de" 443 path
                                          $ \conn -> fst <$> (runStateT lio $ ConnectionState { wsConnection = conn, lhAuth = auth })
-    where path = "/user/" ++ T.unpack (username auth) ++ "/model"
+    where path = "/websocket"
 
 -- | Sends raw, binary data directly to the lighthouse.
 sendBinaryData :: BL.ByteString -> LighthouseIO ()
