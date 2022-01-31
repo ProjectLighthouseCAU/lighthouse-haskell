@@ -1,0 +1,30 @@
+name: Docs
+
+on:
+  push:
+    branches:
+    - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Haskell Stack
+      uses: haskell/actions/setup@v1
+      with:
+        enable-stack: true
+        stack-version: 'latest'
+    - name: Generate Docs
+      run: |
+        stack haddock --no-haddock-deps --fast
+        dist_dir=$(stack path --dist-dir)
+        pkg_name=lighthouse-client
+        cp -r $pkg_name/$dist_dir/doc/html/$pkg_name doc
+    - name: Deploy Docs
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./doc
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'

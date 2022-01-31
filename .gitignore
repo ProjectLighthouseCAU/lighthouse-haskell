@@ -1,5 +1,6 @@
 .DS_Store
 .vscode
+doc
 dist
 dist-newstyle
 .cabal-sandbox
