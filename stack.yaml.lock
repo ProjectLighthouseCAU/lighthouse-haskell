@@ -3,10 +3,17 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages: []
+packages:
+- completed:
+    hackage: msgpack-1.0.1.0@sha256:a87b663fc28d661b41552331d22e10b34028cad8a592ae758ac47e363933b6bd,3004
+    pantry-tree:
+      sha256: 9b6a847c24cc11e6cf83582ad02740142c9cd0e80c88aa718895fd31fb401482
+      size: 595
+  original:
+    hackage: msgpack-1.0.1.0
 snapshots:
 - completed:
-    size: 524163
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/25.yaml
-    sha256: 97548b4e927a8a862d4a203687ca18a3f5d2ae75b4b72c946fb29c17df1a5082
-  original: lts-14.25
+    sha256: 7f69bb29a57495586e7e3ed31ecc59c0d2c959cb23bd52b71ca676f254c9beb1
+    size: 587819
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/23.yaml
+  original: lts-18.23
