@@ -32,7 +32,7 @@ data ClientRequest = DisplayRequest { crDisplay :: Display }
 
 -- | Low-level client -> server message structure.
 data ClientMessage = ClientMessage
-    { cReqId :: Int
+    { cRequestId :: Int
     , cVerb :: T.Text
     , cPath :: [T.Text]
     , cAuthentication :: Authentication
@@ -41,16 +41,16 @@ data ClientMessage = ClientMessage
     deriving (Show, Eq)
 
 -- | Encodes a ClientRequest to a ClientMessage.
-encodeRequest :: Authentication -> ClientRequest -> ClientMessage
-encodeRequest auth (DisplayRequest disp) = ClientMessage
-    { cReqId = 0
+encodeRequest :: Int -> Authentication -> ClientRequest -> ClientMessage
+encodeRequest reqId auth (DisplayRequest disp) = ClientMessage
+    { cRequestId = reqId
     , cVerb = "PUT"
     , cPath = ["user", username auth, "model"]
     , cAuthentication = auth
     , cPayload = mpSerialize disp
     }
-encodeRequest auth ControllerStreamRequest = ClientMessage
-    { cReqId = -1
+encodeRequest reqId auth ControllerStreamRequest = ClientMessage
+    { cRequestId = reqId
     , cVerb = "STREAM"
     , cPath = ["user", username auth, "model"]
     , cAuthentication = auth
@@ -59,7 +59,7 @@ encodeRequest auth ControllerStreamRequest = ClientMessage
 
 instance MPSerializable ClientMessage where
     mpSerialize ClientMessage {..} = mpMap
-        [ ("REID", mpInt cReqId)
+        [ ("REID", mpInt cRequestId)
         , ("VERB", mpStr cVerb)
         , ("PATH", mpArray (mpStr <$> cPath))
         , ("AUTH", mpMap [("USER", mpStr username), ("TOKEN", mpStr token)])

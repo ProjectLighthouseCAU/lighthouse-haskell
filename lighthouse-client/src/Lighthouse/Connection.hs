@@ -29,6 +29,7 @@ import Data.Maybe (fromJust)
 data ConnectionState = ConnectionState
     { csConnection :: WS.Connection
     , csAuthentication :: Authentication
+    , csRequestId :: Int
     , csClosed :: Bool
     }
 
@@ -94,7 +95,9 @@ receive = deserialize <$> receiveBinaryData
 sendRequest :: ClientRequest -> LighthouseIO ()
 sendRequest r = do
     auth <- gets csAuthentication
-    send $ encodeRequest auth r
+    reqId <- gets csRequestId
+    modify $ \cs -> cs { csRequestId = reqId + 1 }
+    send $ encodeRequest reqId auth r
 
 -- | Receives an event from the lighthouse.
 receiveEvent :: LighthouseIO (Maybe ServerEvent)
