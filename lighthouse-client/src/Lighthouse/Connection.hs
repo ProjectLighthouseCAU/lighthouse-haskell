@@ -4,8 +4,8 @@ module Lighthouse.Connection
       LighthouseIO (..)
     , runLighthouseIO
       -- * Communication with the lighthouse
-    , sendDisplay, sendClose
-    , receiveKeyEvents
+    , sendRequest, sendDisplay, sendClose
+    , receiveEvent, receiveKeyEvents
     ) where
 
 import Control.Monad ((<=<))
