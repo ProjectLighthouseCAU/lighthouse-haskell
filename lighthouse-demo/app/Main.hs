@@ -54,5 +54,5 @@ main = do
     -- Render image to lighthouse
     args <- getArgs
     case args of
-        [imagePath] -> runLighthouseIO (app imagePath) auth []
+        [imagePath] -> runLighthouseIO [emptyListener { onConnect = app imagePath }] auth
         _           -> putStrLn "Arguments: [path to png image]"

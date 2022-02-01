@@ -1,8 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 module Lighthouse.Connection
     ( -- * The LighthouseIO monad
-      LighthouseIO (..)
-    , runLighthouseIO
+      LighthouseIO (..), Listener (..)
+    , emptyListener, runLighthouseIO
       -- * Communication with the lighthouse
     , sendRequest, sendDisplay, sendClose
     , receiveEvent, receiveInputEvents
@@ -36,14 +36,16 @@ type LighthouseIO = StateT ConnectionState IO
 
 -- | A listener for events from the server.
 data Listener = Listener
-    { onInput :: InputEvent -> LighthouseIO ()
+    { onConnect :: LighthouseIO ()
+    , onInput :: InputEvent -> LighthouseIO ()
     , onError :: T.Text     -> LighthouseIO ()
     }
 
 -- | Creates an empty listener.
 emptyListener :: Listener
 emptyListener = Listener
-    { onInput = \_ -> return ()
+    { onConnect = return ()
+    , onInput = \_ -> return ()
     , onError = \_ -> return ()
     }
 
@@ -53,19 +55,19 @@ notifyListener ServerErrorEvent {..} l = onError l seError
 notifyListener ServerInputEvent {..} l = mapM_ (onInput l) seEvents
 
 -- | Runs a lighthouse application using the given credentials.
-runLighthouseIO :: LighthouseIO a -> Authentication -> [Listener] -> IO a
-runLighthouseIO lio auth listeners = withSocketsDo $
-    WSS.runSecureClient "lighthouse.uni-kiel.de" 443 path $ \conn -> do
+runLighthouseIO :: [Listener] -> Authentication -> IO a
+runLighthouseIO listeners auth = withSocketsDo $
+    WSS.runSecureClient "lighthouse.uni-kiel.de" 443 "/websocket" $ \conn -> do
         let state = ConnectionState { csConnection = conn, csAuthentication = auth }
 
-        -- Listen for events asynchronously
-        forkIO $ flip evalStateT state $ forever $ runMaybeT $ do
-            ev <- MaybeT receiveEvent
-            liftIO $ putStrLn $ "Got event: " ++ show ev
-            mapM (lift . notifyListener ev) listeners
+        flip evalStateT state $ do
+            mapM_ onConnect listeners
 
-        evalStateT lio state
-    where path = "/websocket"
+            -- Run event loop
+            forever $ runMaybeT $ do
+                ev <- MaybeT receiveEvent
+                liftIO $ putStrLn $ "Got event: " ++ show ev
+                mapM (lift . notifyListener ev) listeners
 
 -- | Sends raw, binary data directly to the lighthouse.
 sendBinaryData :: BL.ByteString -> LighthouseIO ()
