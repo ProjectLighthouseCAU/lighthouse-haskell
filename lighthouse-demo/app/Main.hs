@@ -30,14 +30,17 @@ app imagePath = do
 
 dynImgToDisplay :: P.DynamicImage -> Either String Display
 dynImgToDisplay dimg = case dimg of
-    P.ImageRGB8 img -> Right $ imgToDisplay img $ \(P.PixelRGB8 r g b) -> Color (fromIntegral r) (fromIntegral g) (fromIntegral b)
-    P.ImageRGBA8 img -> Right $ imgToDisplay img $ \(P.PixelRGBA8 r g b _) -> Color (fromIntegral r) (fromIntegral g) (fromIntegral b)
-    _ -> Left "Unrecognized PNG format"
+    P.ImageRGB8  img -> Right $ imgToDisplay img $ \(P.PixelRGB8 r g b)    -> mkColor r g b
+    P.ImageRGBA8 img -> Right $ imgToDisplay img $ \(P.PixelRGBA8 r g b _) -> mkColor r g b
+    _                -> Left "Unrecognized PNG format"
+    where mkColor r g b = Color (fromIntegral r) (fromIntegral g) (fromIntegral b)
 
 imgToDisplay :: P.Pixel a => P.Image a -> (a -> Color) -> Display
-imgToDisplay img pxToColor = Display $ (\y -> Row $ (\x -> pxToColor $ P.pixelAt img x y) <$> [0..width - 1]) <$> [0..height - 1]
-    where width = P.imageWidth img
-          height = P.imageHeight img
+imgToDisplay img pixToColor = Display $ rowAt <$> [0..height - 1]
+    where width     = P.imageWidth img
+          height    = P.imageHeight img
+          rowAt y   = Row $ (pixAt y) <$> [0..width - 1]
+          pixAt y x = pixToColor $ P.pixelAt img x y
 
 main :: IO ()
 main = do
