@@ -81,7 +81,7 @@ instance Serializable ClientMessage where
 
 -- | High-level server -> client message structure.
 data ServerEvent = ServerErrorEvent { seWarnings :: [T.Text], seError :: Maybe T.Text }
-                 | ServerInputEvent { seEvents :: [InputEvent] }
+                 | ServerInputEvent { seEvent :: InputEvent }
     deriving (Show, Eq)
 
 -- | A key event emitted via the web interface.

@@ -58,7 +58,7 @@ notifyListener :: ServerEvent -> Listener -> LighthouseIO ()
 notifyListener ServerErrorEvent {..} l = do
     sequence_ (onError l <$> seError)
     mapM_ (onWarning l) seWarnings
-notifyListener ServerInputEvent {..} l = mapM_ (onInput l) seEvents
+notifyListener ServerInputEvent {..} l = onInput l seEvent
 
 -- | Runs a lighthouse application using the given credentials.
 runLighthouseIO :: [Listener] -> Authentication -> IO ()
