@@ -15,3 +15,4 @@ data KeyEvent = KeyEvent
     , eventKey :: Int
     , eventPressed :: Bool
     }
+    deriving (Show, Eq)

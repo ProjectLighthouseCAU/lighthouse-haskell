@@ -1,5 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
-module Lighthouse.Connection (LighthouseIO (..), runLighthouseIO, sendDisplay, sendClose) where
+module Lighthouse.Connection
+    ( LighthouseIO (..)
+    , runLighthouseIO, sendDisplay, sendClose, receiveKeyEvents
+    ) where
 
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Trans.State
