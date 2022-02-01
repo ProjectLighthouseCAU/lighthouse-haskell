@@ -10,6 +10,7 @@ module Lighthouse.Connection
 
 import Control.Monad ((<=<))
 import Control.Monad.Trans (liftIO)
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT)
 import Control.Monad.Trans.State
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (sequence_)
@@ -75,7 +76,7 @@ runLighthouseIO listeners auth = withSocketsDo $
                 e <- receiveEvent
 
                 case e of
-                    Left err -> liftIO $ putStrLn $ "Error decoding event: " ++ T.unpack err
+                    Left err -> liftIO $ putStrLn $ "Got unrecognized event: " ++ T.unpack err
                     Right e' -> do
                         liftIO $ putStrLn $ "Got event: " ++ show e'
                         mapM_ (notifyListener e') listeners
@@ -110,7 +111,10 @@ sendRequest r = do
 
 -- | Receives an event from the lighthouse.
 receiveEvent :: LighthouseIO (Either T.Text ServerEvent)
-receiveEvent = (decodeEvent =<<) <$> receive
+receiveEvent = runExceptT $ do
+    raw <- ExceptT receive
+    liftIO $ putStrLn $ "Got " ++ show raw
+    ExceptT $ return $ decodeEvent raw
 
 -- | Sends a display request with the given display.
 sendDisplay :: Display -> LighthouseIO ()
