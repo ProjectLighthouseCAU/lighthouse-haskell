@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Lighthouse.Protocol
-    ( ClientMessage (..), ServerMessage (..)
+    ( -- * Client -> server messages
+      ClientMessage (..)
     , displayRequest, controllerStreamRequest
+     -- * Server -> client messages
+    , ServerMessage (..)
     ) where
 
 import Control.Applicative ((<|>))
@@ -15,7 +18,7 @@ import Lighthouse.Display
 import Lighthouse.Event
 import Lighthouse.Utils.Serializable
 
--- * Client -> Server messages
+-- Client -> server messages
 
 data ClientMessage a = ClientRequest { cReqId :: Int, cVerb :: T.Text, cAuthentication :: Authentication, cPayload :: a }
 
@@ -43,7 +46,7 @@ instance MPSerializable MP.Object where
 instance MPSerializable Display where
     mpSerialize = MP.ObjectBin . BL.toStrict . serialize
 
--- Creates a display request.
+-- | Creates a display request.
 displayRequest :: Authentication -> Display -> ClientMessage Display
 displayRequest auth disp = ClientRequest
     { cReqId = 0
@@ -52,7 +55,7 @@ displayRequest auth disp = ClientRequest
     , cPayload = disp
     }
 
--- Creates a request for controller stream input.
+-- | Creates a request for controller stream input.
 controllerStreamRequest :: Authentication -> ClientMessage MP.Object
 controllerStreamRequest auth = ClientRequest
     { cReqId = -1
@@ -61,7 +64,7 @@ controllerStreamRequest auth = ClientRequest
     , cPayload = MP.ObjectNil
     }
 
--- * Server -> Client messages
+-- Server -> client messages
 
 data ServerMessage a = ServerRequest { sReqId :: Int, sPayload :: a }
                      | ServerError { sError :: T.Text }

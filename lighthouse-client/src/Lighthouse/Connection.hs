@@ -1,7 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
 module Lighthouse.Connection
-    ( LighthouseIO (..)
-    , runLighthouseIO, sendDisplay, sendClose, receiveKeyEvents
+    ( -- * The LighthouseIO monad
+      LighthouseIO (..)
+    , runLighthouseIO
+      -- * Communication with the lighthouse
+    , sendDisplay, sendClose
+    , receiveKeyEvents
     ) where
 
 import Control.Monad ((<=<))
@@ -23,9 +27,10 @@ import Data.Maybe (fromJust)
 -- TODO: Maintain a list of listeners that get notified of key events
 --       in this state and use forkIO to receive events from the connection
 --       in an infinite loop (using forever).
+-- | Stores the WebSocket connection and the credentials.
 data ConnectionState = ConnectionState { wsConnection :: WS.Connection, lhAuth :: Authentication }
 
--- | The central IO monad to be used by Lighthouse applications. Holds a connection.
+-- | The central IO monad to be used by lighthouse applications. Holds a connection.
 type LighthouseIO a = StateT ConnectionState IO a
 
 -- | Runs a lighthouse application using the given credentials.
@@ -40,7 +45,7 @@ sendBinaryData d = do
     conn <- gets wsConnection
     liftIO $ WS.sendBinaryData conn d
 
--- | Receives raw, binary data directly from the Lighthouse.
+-- | Receives raw, binary data directly from the lighthouse.
 receiveBinaryData :: LighthouseIO BL.ByteString
 receiveBinaryData = do
     conn <- gets wsConnection

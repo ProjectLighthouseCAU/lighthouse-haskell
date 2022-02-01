@@ -1,7 +1,9 @@
 module Lighthouse.Display
-    ( lighthouseRows, lighthouseCols
+    ( -- * Constants
+      lighthouseRows, lighthouseCols
+      -- * Display
+    , Display (..), Row (..)
     , emptyDisplay, coloredDisplay
-    , Color (..), Display (..), Row (..)
     ) where
 
 import Control.Monad (join)
