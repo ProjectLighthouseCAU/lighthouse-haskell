@@ -20,7 +20,12 @@ import Lighthouse.Utils.Serializable
 
 -- Client -> server messages
 
-data ClientMessage a = ClientRequest { cReqId :: Int, cVerb :: T.Text, cAuthentication :: Authentication, cPayload :: a }
+data ClientMessage a = ClientRequest { cReqId :: Int
+                                     , cVerb :: T.Text
+                                     , cPath :: [T.Text]
+                                     , cAuthentication :: Authentication
+                                     , cPayload :: a
+                                     }
 
 class MPSerializable a where
     -- | Converts to a MessagePack representation.
@@ -30,7 +35,7 @@ instance MPSerializable a => MPSerializable (ClientMessage a) where
     mpSerialize ClientRequest {..} = MP.ObjectMap $ V.fromList
         [ (MP.ObjectStr "REID", MP.ObjectInt cReqId)
         , (MP.ObjectStr "VERB", MP.ObjectStr cVerb)
-        , (MP.ObjectStr "PATH", MP.ObjectArray $ V.fromList (MP.ObjectStr <$> ["user", username, "model"]))
+        , (MP.ObjectStr "PATH", MP.ObjectArray $ V.fromList (MP.ObjectStr <$> cPath))
         , (MP.ObjectStr "AUTH", MP.ObjectMap $ V.fromList [(MP.ObjectStr "USER", MP.ObjectStr username), (MP.ObjectStr "TOKEN", MP.ObjectStr token)])
         , (MP.ObjectStr "META", MP.ObjectMap V.empty)
         , (MP.ObjectStr "PAYL", mpSerialize cPayload)
@@ -51,6 +56,7 @@ displayRequest :: Authentication -> Display -> ClientMessage Display
 displayRequest auth disp = ClientRequest
     { cReqId = 0
     , cVerb = "PUT"
+    , cPath = ["user", username auth, "model"]
     , cAuthentication = auth
     , cPayload = disp
     }
@@ -60,6 +66,7 @@ controllerStreamRequest :: Authentication -> ClientMessage MP.Object
 controllerStreamRequest auth = ClientRequest
     { cReqId = -1
     , cVerb = "STREAM"
+    , cPath = ["user", username auth, "model"]
     , cAuthentication = auth
     , cPayload = MP.ObjectNil
     }
