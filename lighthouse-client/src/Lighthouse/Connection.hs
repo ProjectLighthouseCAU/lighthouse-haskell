@@ -16,7 +16,6 @@ import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import Lighthouse.Authentication
 import Lighthouse.Display
-import Lighthouse.Event
 import Lighthouse.Protocol
 import Lighthouse.Utils.Serializable
 import Network.Socket (withSocketsDo)
@@ -32,6 +31,12 @@ data ConnectionState = ConnectionState { wsConnection :: WS.Connection, lhAuth :
 
 -- | The central IO monad to be used by lighthouse applications. Holds a connection.
 type LighthouseIO a = StateT ConnectionState IO a
+
+-- | A listener for keyboard/controller events fired from the web interface.
+data Listener e = Listener
+    { keyboardEvent :: e -> IO ()
+    , controllerEvent :: e -> IO ()
+    }
 
 -- | Runs a lighthouse application using the given credentials.
 runLighthouseIO :: LighthouseIO a -> Authentication -> IO a

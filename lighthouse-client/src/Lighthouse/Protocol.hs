@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Lighthouse.Protocol
     ( -- * Client -> server messages
-      ClientMessage (..)
-    , displayRequest, controllerStreamRequest
+      ClientRequest(..)
+    , ClientMessage (..)
      -- * Server -> client messages
+    , ServerEvent (..)
     , ServerMessage (..)
     ) where
 
@@ -15,21 +16,24 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import Lighthouse.Authentication
 import Lighthouse.Display
-import Lighthouse.Event
+import Lighthouse.Utils.General ((<.$>))
+import Lighthouse.Utils.MessagePack
 import Lighthouse.Utils.Serializable
 
 -- Client -> server messages
 
-data ClientMessage a = ClientRequest { cReqId :: Int
-                                     , cVerb :: T.Text
-                                     , cPath :: [T.Text]
-                                     , cAuthentication :: Authentication
-                                     , cPayload :: a
-                                     }
+-- | High-level client -> server message structure.
+data ClientRequest = DisplayRequest { crDisplay :: Display }
+                   | ControllerStream
 
-class MPSerializable a where
-    -- | Converts to a MessagePack representation.
-    mpSerialize :: a -> MP.Object
+-- | Low-level client -> server message structure.
+data ClientMessage = ClientMessage
+    { cReqId :: Int
+    , cVerb :: T.Text
+    , cPath :: [T.Text]
+    , cAuthentication :: Authentication
+    , cPayload :: MP.Object
+    }
 
 instance MPSerializable a => MPSerializable (ClientMessage a) where
     mpSerialize ClientRequest {..} = MP.ObjectMap $ V.fromList
@@ -44,9 +48,6 @@ instance MPSerializable a => MPSerializable (ClientMessage a) where
 
 instance MPSerializable a => Serializable (ClientMessage a) where
     serialize = MP.pack . mpSerialize
-
-instance MPSerializable MP.Object where
-    mpSerialize = id
 
 instance MPSerializable Display where
     mpSerialize = MP.ObjectBin . BL.toStrict . serialize
@@ -73,12 +74,26 @@ controllerStreamRequest auth = ClientRequest
 
 -- Server -> client messages
 
-data ServerMessage a = ServerRequest { sReqId :: Int, sPayload :: a }
-                     | ServerError { sError :: T.Text }
+-- | High-level server -> client message structure.
+data ServerEvent = ServerErrorEvent { srError :: T.Text }
+                 | ServerKeysEvent { srEvents :: [KeyEvent] }
 
-class MPDeserializable a where
-    -- | Converts from a MessagePack representation.
-    mpDeserialize :: MP.Object -> Maybe a
+-- | A key event emitted via the web interface.
+data KeyEvent = KeyEvent
+    { keSource :: Int
+    , keKeyCode :: Int
+    , keIsController :: Bool
+    , kePressed :: Bool
+    }
+    deriving (Show, Eq)
+
+-- | Low-level server -> client message structure.
+data ServerMessage = ServerMessage
+    { sReqId :: Int
+    , sRNum :: Int
+    , sResponse :: T.Text
+    , sPayload :: MP.Object
+    }
 
 instance MPDeserializable a => MPDeserializable (ServerMessage a) where
     mpDeserialize (MP.ObjectMap vm) = do
@@ -94,23 +109,20 @@ instance MPDeserializable a => MPDeserializable (ServerMessage a) where
                 return $ ServerError { sError = response }
     mpDeserialize _ = Nothing
 
-instance MPDeserializable () where
-    mpDeserialize _ = Just () -- we don't care about the result
-
-instance MPDeserializable MP.Object where
-    mpDeserialize = Just
-
-instance MPDeserializable a => MPDeserializable [a] where
-    mpDeserialize (MP.ObjectArray a) = mapM mpDeserialize $ V.toList a
-    mpDeserialize _ = Nothing
-
 instance MPDeserializable KeyEvent where
     mpDeserialize (MP.ObjectMap vo) = do
         let o = V.toList vo
         src <- MP.fromObject =<< lookup (MP.ObjectStr "src") o
-        key <- MP.fromObject =<< lookup (MP.ObjectStr "key") o <|> lookup (MP.ObjectStr "btn") o
+        let key = lookup (MP.ObjectStr "key") o
+            btn = lookup (MP.ObjectStr "btn") o
+        code <- MP.fromObject =<< (key <|> btn)
         dwn <- MP.fromObject =<< lookup (MP.ObjectStr "dwn") o
-        return $ KeyEvent { eventSource = src, eventKey = key, eventPressed = dwn }
+        return $ KeyEvent
+            { keSource = src
+            , keKeyCode = key
+            , keIsController = isJust btn
+            , kePressed = dwn
+            }
     mpDeserialize _ = Nothing
 
 instance MPDeserializable a => Deserializable (ServerMessage a) where
