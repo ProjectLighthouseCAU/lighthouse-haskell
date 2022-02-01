@@ -34,8 +34,14 @@ runLighthouseIO lio auth = withSocketsDo $ WSS.runSecureClient "lighthouse.uni-k
 -- | Sends raw, binary data directly to the lighthouse.
 sendBinaryData :: BL.ByteString -> LighthouseIO ()
 sendBinaryData d = do
-    conn <- wsConnection <$> get
+    conn <- gets wsConnection
     liftIO $ WS.sendBinaryData conn d
+
+-- | Receives raw, binary data directly from the Lighthouse.
+receiveBinaryData :: LighthouseIO BL.ByteString
+receiveBinaryData = do
+    conn <- gets wsConnection
+    liftIO $ WS.receiveData conn
 
 -- | Sends a display request with the given display.
 sendDisplay :: Display -> LighthouseIO ()
@@ -46,8 +52,7 @@ sendDisplay d = do
 -- | Receives a batch of key event from the Lighthouse.
 receiveKeyEvents :: LighthouseIO [KeyEvent]
 receiveKeyEvents = do
-    conn <- wsConnection <$> get
-    dat <- liftIO $ WS.receiveData conn
+    dat <- receiveBinaryData
     case deserialize dat of
         Just FromServerRequest {..} -> return fsPayload
         Just FromServerResponse {..} -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack fsError
