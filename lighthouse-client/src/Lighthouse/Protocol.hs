@@ -28,6 +28,7 @@ import Lighthouse.Utils.Serializable
 -- | High-level client -> server message structure.
 data ClientRequest = DisplayRequest { crDisplay :: Display }
                    | ControllerStreamRequest
+    deriving (Show, Eq)
 
 -- | Low-level client -> server message structure.
 data ClientMessage = ClientMessage
@@ -37,6 +38,7 @@ data ClientMessage = ClientMessage
     , cAuthentication :: Authentication
     , cPayload :: MP.Object
     }
+    deriving (Show, Eq)
 
 -- | Encodes a ClientRequest to a ClientMessage.
 encodeRequest :: Authentication -> ClientRequest -> ClientMessage
@@ -77,6 +79,7 @@ instance Serializable ClientMessage where
 -- | High-level server -> client message structure.
 data ServerEvent = ServerErrorEvent { seError :: T.Text }
                  | ServerInputEvent { seEvents :: [InputEvent] }
+    deriving (Show, Eq)
 
 -- | A key event emitted via the web interface.
 data InputEvent = InputEvent
@@ -98,6 +101,7 @@ data ServerMessage = ServerMessage
     , sResponse :: Maybe T.Text
     , sPayload :: Maybe MP.Object
     }
+    deriving (Show, Eq)
 
 -- | Decodes a ServerMessage to a ServerEvent.
 decodeEvent :: ServerMessage -> Maybe ServerEvent

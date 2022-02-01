@@ -8,8 +8,10 @@ module Lighthouse.Connection
     , receiveEvent, receiveInputEvents
     ) where
 
-import Control.Monad ((<=<))
-import Control.Monad.Trans (liftIO)
+import Control.Concurrent (forkIO)
+import Control.Monad ((<=<), forever)
+import Control.Monad.Trans (lift, liftIO)
+import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Control.Monad.Trans.State
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.MessagePack as MP
@@ -23,37 +25,58 @@ import qualified Network.WebSockets as WS
 import qualified Wuss as WSS
 import Data.Maybe (fromJust)
 
--- TODO: Maintain a list of listeners that get notified of key events
---       in this state and use forkIO to receive events from the connection
---       in an infinite loop (using forever).
 -- | Stores the WebSocket connection and the credentials.
-data ConnectionState = ConnectionState { wsConnection :: WS.Connection, lhAuth :: Authentication }
-
--- | The central IO monad to be used by lighthouse applications. Holds a connection.
-type LighthouseIO a = StateT ConnectionState IO a
-
--- | A listener for keyboard/controller events fired from the web interface.
-data Listener e = Listener
-    { keyboardEvent :: e -> IO ()
-    , controllerEvent :: e -> IO ()
+data ConnectionState = ConnectionState
+    { csConnection :: WS.Connection
+    , csAuthentication :: Authentication
     }
 
+-- | The central IO monad to be used by lighthouse applications. Holds a connection.
+type LighthouseIO = StateT ConnectionState IO
+
+-- | A listener for events from the server.
+data Listener = Listener
+    { onInput :: InputEvent -> LighthouseIO ()
+    , onError :: T.Text     -> LighthouseIO ()
+    }
+
+-- | Creates an empty listener.
+emptyListener :: Listener
+emptyListener = Listener
+    { onInput = \_ -> return ()
+    , onError = \_ -> return ()
+    }
+
+-- | Passes an event to the given listener.
+notifyListener :: ServerEvent -> Listener -> LighthouseIO ()
+notifyListener ServerErrorEvent {..} l = onError l seError
+notifyListener ServerInputEvent {..} l = mapM_ (onInput l) seEvents
+
 -- | Runs a lighthouse application using the given credentials.
-runLighthouseIO :: LighthouseIO a -> Authentication -> IO a
-runLighthouseIO lio auth = withSocketsDo $ WSS.runSecureClient "lighthouse.uni-kiel.de" 443 path
-                                         $ \conn -> fst <$> (runStateT lio $ ConnectionState { wsConnection = conn, lhAuth = auth })
+runLighthouseIO :: LighthouseIO a -> Authentication -> [Listener] -> IO a
+runLighthouseIO lio auth listeners = withSocketsDo $
+    WSS.runSecureClient "lighthouse.uni-kiel.de" 443 path $ \conn -> do
+        let state = ConnectionState { csConnection = conn, csAuthentication = auth }
+
+        -- Listen for events asynchronously
+        forkIO $ flip evalStateT state $ forever $ runMaybeT $ do
+            ev <- MaybeT receiveEvent
+            liftIO $ putStrLn $ "Got event: " ++ show ev
+            mapM (lift . notifyListener ev) listeners
+
+        evalStateT lio state
     where path = "/websocket"
 
 -- | Sends raw, binary data directly to the lighthouse.
 sendBinaryData :: BL.ByteString -> LighthouseIO ()
 sendBinaryData d = do
-    conn <- gets wsConnection
+    conn <- gets csConnection
     liftIO $ WS.sendBinaryData conn d
 
 -- | Receives raw, binary data directly from the lighthouse.
 receiveBinaryData :: LighthouseIO BL.ByteString
 receiveBinaryData = do
-    conn <- gets wsConnection
+    conn <- gets csConnection
     liftIO $ WS.receiveData conn
 
 -- | Send a serializable value to the lighthouse.
@@ -67,7 +90,7 @@ receive = deserialize <$> receiveBinaryData
 -- | Sends a request to the lighthouse.
 sendRequest :: ClientRequest -> LighthouseIO ()
 sendRequest r = do
-    auth <- lhAuth <$> get
+    auth <- gets csAuthentication
     send $ encodeRequest auth r
 
 -- | Receives an event from the lighthouse.
@@ -90,6 +113,6 @@ receiveInputEvents = do
 -- | Sends a close message.
 sendClose :: LighthouseIO ()
 sendClose = do
-    conn <- wsConnection <$> get
+    conn <- gets csConnection
     liftIO $ WS.sendCloseCode conn status $ T.pack "end of data"
     where status = 1000 -- normal
