@@ -9,8 +9,8 @@ module Lighthouse.Protocol
     ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad ((<=<))
 import qualified Data.ByteString.Lazy as BL
+import Data.Maybe (isJust)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -24,7 +24,7 @@ import Lighthouse.Utils.Serializable
 
 -- | High-level client -> server message structure.
 data ClientRequest = DisplayRequest { crDisplay :: Display }
-                   | ControllerStream
+                   | ControllerStreamRequest
 
 -- | Low-level client -> server message structure.
 data ClientMessage = ClientMessage
@@ -35,42 +35,36 @@ data ClientMessage = ClientMessage
     , cPayload :: MP.Object
     }
 
-instance MPSerializable a => MPSerializable (ClientMessage a) where
-    mpSerialize ClientRequest {..} = MP.ObjectMap $ V.fromList
-        [ (MP.ObjectStr "REID", MP.ObjectInt cReqId)
-        , (MP.ObjectStr "VERB", MP.ObjectStr cVerb)
-        , (MP.ObjectStr "PATH", MP.ObjectArray $ V.fromList (MP.ObjectStr <$> cPath))
-        , (MP.ObjectStr "AUTH", MP.ObjectMap $ V.fromList [(MP.ObjectStr "USER", MP.ObjectStr username), (MP.ObjectStr "TOKEN", MP.ObjectStr token)])
-        , (MP.ObjectStr "META", MP.ObjectMap V.empty)
-        , (MP.ObjectStr "PAYL", mpSerialize cPayload)
-        ]
-        where Authentication {..} = cAuthentication
-
-instance MPSerializable a => Serializable (ClientMessage a) where
-    serialize = MP.pack . mpSerialize
-
-instance MPSerializable Display where
-    mpSerialize = MP.ObjectBin . BL.toStrict . serialize
-
--- | Creates a display request.
-displayRequest :: Authentication -> Display -> ClientMessage Display
-displayRequest auth disp = ClientRequest
+-- | Encodes a ClientRequest to a ClientMessage.
+encodeRequest :: Authentication -> ClientRequest -> ClientMessage
+encodeRequest auth (DisplayRequest disp) = ClientMessage
     { cReqId = 0
     , cVerb = "PUT"
     , cPath = ["user", username auth, "model"]
     , cAuthentication = auth
-    , cPayload = disp
+    , cPayload = mpSerialize disp
     }
-
--- | Creates a request for controller stream input.
-controllerStreamRequest :: Authentication -> ClientMessage MP.Object
-controllerStreamRequest auth = ClientRequest
+encodeRequest auth ControllerStreamRequest = ClientMessage
     { cReqId = -1
     , cVerb = "STREAM"
     , cPath = ["user", username auth, "model"]
     , cAuthentication = auth
     , cPayload = MP.ObjectNil
     }
+
+instance MPSerializable ClientMessage where
+    mpSerialize ClientMessage {..} = mpMap
+        [ ("REID", mpInt cReqId)
+        , ("VERB", mpStr cVerb)
+        , ("PATH", mpArray (mpStr <$> cPath))
+        , ("AUTH", mpMap [("USER", mpStr username), ("TOKEN", mpStr token)])
+        , ("META", mpMap [])
+        , ("PAYL", cPayload)
+        ]
+        where Authentication {..} = cAuthentication
+
+instance MPSerializable Display where
+    mpSerialize = MP.ObjectBin . BL.toStrict . serialize
 
 -- Server -> client messages
 
@@ -83,47 +77,48 @@ data KeyEvent = KeyEvent
     { keSource :: Int
     , keKeyCode :: Int
     , keIsController :: Bool
-    , kePressed :: Bool
+    , keIsDown :: Bool
     }
     deriving (Show, Eq)
 
 -- | Low-level server -> client message structure.
 data ServerMessage = ServerMessage
-    { sReqId :: Int
-    , sRNum :: Int
-    , sResponse :: T.Text
-    , sPayload :: MP.Object
+    { sRNum :: Int
+    , sReqId :: Maybe Int
+    , sResponse :: Maybe T.Text
+    , sPayload :: Maybe MP.Object
     }
 
-instance MPDeserializable a => MPDeserializable (ServerMessage a) where
+-- | Decodes a ServerMessage to a ServerEvent.
+decodeEvent :: ServerMessage -> Maybe ServerEvent
+decodeEvent ServerMessage {..} = case sRNum of
+    200 -> ServerKeysEvent <$> (mpDeserialize =<< sPayload)
+    _   -> ServerErrorEvent <$> sResponse
+
+instance MPDeserializable ServerMessage where
     mpDeserialize (MP.ObjectMap vm) = do
         let m = V.toList vm
-        rnum <- MP.fromObject =<< lookup (MP.ObjectStr "RNUM") m
-        case rnum :: Int of
-            200 -> do
-                reqId <- MP.fromObject =<< lookup (MP.ObjectStr "REID") m
-                payload <- mpDeserialize =<< lookup (MP.ObjectStr "PAYL") m
-                return $ ServerRequest { sReqId = reqId, sPayload = payload }
-            _   -> do
-                response <- MP.fromObject =<< lookup (MP.ObjectStr "RESPONSE") m
-                return $ ServerError { sError = response }
+        rnum <- mpUnInt =<< lookup (mpStr "RNUM") m
+        return ServerMessage
+            { sRNum = rnum
+            , sReqId = mpUnInt =<< lookup (mpStr "REOD") m
+            , sResponse = mpUnStr =<< lookup (mpStr "RESPONSE") m
+            , sPayload = lookup (mpStr "PAYL") m
+            }
     mpDeserialize _ = Nothing
 
 instance MPDeserializable KeyEvent where
     mpDeserialize (MP.ObjectMap vo) = do
         let o = V.toList vo
-        src <- MP.fromObject =<< lookup (MP.ObjectStr "src") o
-        let key = lookup (MP.ObjectStr "key") o
-            btn = lookup (MP.ObjectStr "btn") o
-        code <- MP.fromObject =<< (key <|> btn)
-        dwn <- MP.fromObject =<< lookup (MP.ObjectStr "dwn") o
-        return $ KeyEvent
+        src <- mpUnInt =<< lookup (mpStr "src") o
+        let key = lookup (mpStr "key") o
+            btn = lookup (mpStr "btn") o
+        keyCode <- mpUnInt =<< (key <|> btn)
+        dwn <- mpUnBool =<< lookup (mpStr "dwn") o
+        return KeyEvent
             { keSource = src
-            , keKeyCode = key
+            , keKeyCode = keyCode
             , keIsController = isJust btn
-            , kePressed = dwn
+            , keIsDown = dwn
             }
     mpDeserialize _ = Nothing
-
-instance MPDeserializable a => Deserializable (ServerMessage a) where
-    deserialize = mpDeserialize <=< MP.unpack
