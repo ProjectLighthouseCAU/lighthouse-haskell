@@ -5,7 +5,7 @@ module Lighthouse.Connection
     , runLighthouseIO
       -- * Communication with the lighthouse
     , sendRequest, sendDisplay, sendClose
-    , receiveEvent, receiveKeyEvents
+    , receiveEvent, receiveInputEvents
     ) where
 
 import Control.Monad ((<=<))
@@ -78,12 +78,12 @@ receiveEvent = (decodeEvent =<<) <$> receive
 sendDisplay :: Display -> LighthouseIO ()
 sendDisplay = sendRequest . DisplayRequest
 
--- | Receives a batch of key events from the Lighthouse.
-receiveKeyEvents :: LighthouseIO [KeyEvent]
-receiveKeyEvents = do
+-- | Receives a batch of input events from the Lighthouse.
+receiveInputEvents :: LighthouseIO [InputEvent]
+receiveInputEvents = do
     e <- receiveEvent
     case e of
-        Just ServerKeysEvent {..} -> return seEvents
+        Just ServerInputEvent {..} -> return seEvents
         Just ServerErrorEvent {..} -> error $ "Got error from server: " ++ T.unpack seError
         _ -> error "Got unrecognized response to key events from server"
 

@@ -5,7 +5,7 @@ module Lighthouse.Protocol
     , ClientMessage (..)
     , encodeRequest
      -- * Server -> client messages
-    , ServerEvent (..), KeyEvent (..)
+    , ServerEvent (..), InputEvent (..), Input (..)
     , ServerMessage (..)
     , decodeEvent
     ) where
@@ -76,15 +76,19 @@ instance Serializable ClientMessage where
 
 -- | High-level server -> client message structure.
 data ServerEvent = ServerErrorEvent { seError :: T.Text }
-                 | ServerKeysEvent { seEvents :: [KeyEvent] }
+                 | ServerInputEvent { seEvents :: [InputEvent] }
 
 -- | A key event emitted via the web interface.
-data KeyEvent = KeyEvent
+data InputEvent = InputEvent
     { keSource :: Int
-    , keKeyCode :: Int
-    , keIsController :: Bool
+    , keInput :: Input
     , keIsDown :: Bool
     }
+    deriving (Show, Eq)
+
+-- | An input via the web interface.
+data Input = KeyInput { iKey :: Int }
+           | ControllerInput { iButton :: Int }
     deriving (Show, Eq)
 
 -- | Low-level server -> client message structure.
@@ -98,7 +102,7 @@ data ServerMessage = ServerMessage
 -- | Decodes a ServerMessage to a ServerEvent.
 decodeEvent :: ServerMessage -> Maybe ServerEvent
 decodeEvent ServerMessage {..} = case sRNum of
-    200 -> ServerKeysEvent <$> (mpDeserialize =<< sPayload)
+    200 -> ServerInputEvent <$> (mpDeserialize =<< sPayload)
     _   -> ServerErrorEvent <$> sResponse
 
 instance MPDeserializable ServerMessage where
@@ -113,18 +117,17 @@ instance MPDeserializable ServerMessage where
             }
     mpDeserialize _ = Nothing
 
-instance MPDeserializable KeyEvent where
+instance MPDeserializable InputEvent where
     mpDeserialize (MP.ObjectMap vo) = do
         let o = V.toList vo
         src <- mpUnInt =<< lookup (mpStr "src") o
-        let key = lookup (mpStr "key") o
-            btn = lookup (mpStr "btn") o
-        keyCode <- mpUnInt =<< (key <|> btn)
+        let key = mpUnInt =<< lookup (mpStr "key") o
+            btn = mpUnInt =<< lookup (mpStr "btn") o
+        input <- (KeyInput <$> key) <|> (ControllerInput <$> btn)
         dwn <- mpUnBool =<< lookup (mpStr "dwn") o
-        return KeyEvent
+        return InputEvent
             { keSource = src
-            , keKeyCode = keyCode
-            , keIsController = isJust btn
+            , keInput = input
             , keIsDown = dwn
             }
     mpDeserialize _ = Nothing
