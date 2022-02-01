@@ -94,6 +94,9 @@ instance MPDeserializable a => MPDeserializable (ServerMessage a) where
                 return $ ServerError { sError = response }
     mpDeserialize _ = Nothing
 
+instance MPDeserializable () where
+    mpDeserialize _ = Just () -- we don't care about the result
+
 instance MPDeserializable MP.Object where
     mpDeserialize = Just
 
