@@ -54,5 +54,9 @@ main = do
     -- Render image to lighthouse
     args <- getArgs
     case args of
-        [imagePath] -> runLighthouseIO [emptyListener { onConnect = app imagePath }] auth
+        [imagePath] -> runLighthouseIO [listener] auth
+            where listener = emptyListener { onConnect = app imagePath
+                                           , onError   = \e -> liftIO $ putStrLn $ "Error from server: " ++ T.unpack e
+                                           , onWarning = \w -> liftIO $ putStrLn $ "Warning from server: " ++ T.unpack w
+                                           }
         _           -> putStrLn "Arguments: [path to png image]"
