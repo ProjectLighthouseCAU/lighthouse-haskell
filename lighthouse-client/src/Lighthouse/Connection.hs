@@ -4,9 +4,11 @@ module Lighthouse.Connection
     , runLighthouseIO, sendDisplay, sendClose, receiveKeyEvents
     ) where
 
+import Control.Monad ((<=<))
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Trans.State
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import Lighthouse.Authentication
 import Lighthouse.Display
@@ -16,6 +18,7 @@ import Lighthouse.Utils.Serializable
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified Wuss as WSS
+import Data.Maybe (fromJust)
 
 -- TODO: Maintain a list of listeners that get notified of key events
 --       in this state and use forkIO to receive events from the connection
@@ -43,11 +46,23 @@ receiveBinaryData = do
     conn <- gets wsConnection
     liftIO $ WS.receiveData conn
 
+-- | Send a serializable value to the lighthouse.
+send :: Serializable a => a -> LighthouseIO ()
+send = sendBinaryData . serialize
+
+-- | Receives a deserializable value from the lighthouse.
+receive :: Deserializable a => LighthouseIO (Maybe a)
+receive = deserialize <$> receiveBinaryData
+
 -- | Sends a display request with the given display.
 sendDisplay :: Display -> LighthouseIO ()
 sendDisplay d = do
     auth <- lhAuth <$> get
-    sendBinaryData $ serialize $ displayRequest auth d
+    send $ displayRequest auth d
+
+    -- DEBUG
+    d <- receive :: LighthouseIO (Maybe (FromServerMessage MP.Object))
+    liftIO $ putStrLn $ "Got " ++ show (fsError (fromJust d))
 
 -- | Receives a batch of key event from the Lighthouse.
 receiveKeyEvents :: LighthouseIO [KeyEvent]
@@ -55,8 +70,8 @@ receiveKeyEvents = do
     dat <- receiveBinaryData
     case deserialize dat of
         Just FromServerRequest {..} -> return fsPayload
-        Just FromServerResponse {..} -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack fsError
-                                           return []
+        Just FromServerError {..} -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack fsError
+                                        return []
         Nothing -> do liftIO $ putStrLn "Got unrecognized message from server"
                       return []
 

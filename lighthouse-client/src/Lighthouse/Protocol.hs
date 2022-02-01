@@ -25,10 +25,10 @@ class MPSerializable a where
 
 instance MPSerializable a => MPSerializable (FromClientMessage a) where
     mpSerialize FromClientRequest {..} = MP.ObjectMap $ V.fromList
-        [ (MP.ObjectStr "REID", MP.ObjectInt 0)
-        , (MP.ObjectStr "VERB", MP.ObjectStr "PUT")
-        , (MP.ObjectStr "PATH", MP.toObject (["user", "model"] :: [T.Text]))
-        , (MP.ObjectStr "AUTH", MP.toObject ([("USER", username), ("TOKEN", token)] :: [(T.Text, T.Text)]))
+        [ (MP.ObjectStr "REID", MP.ObjectInt fcReqId)
+        , (MP.ObjectStr "VERB", MP.ObjectStr fcVerb)
+        , (MP.ObjectStr "PATH", MP.ObjectArray $ V.fromList (MP.ObjectStr <$> ["user", username, "model"]))
+        , (MP.ObjectStr "AUTH", MP.ObjectMap $ V.fromList [(MP.ObjectStr "USER", MP.ObjectStr username), (MP.ObjectStr "TOKEN", MP.ObjectStr token)])
         , (MP.ObjectStr "META", MP.ObjectMap V.empty)
         , (MP.ObjectStr "PAYL", mpSerialize fcPayload)
         ]
@@ -64,7 +64,7 @@ controllerStreamRequest auth = FromClientRequest
 -- ====== SERVER -> CLIENT MESSAGES ======
 
 data FromServerMessage a = FromServerRequest { fsReqId :: Int, fsPayload :: a }
-                         | FromServerResponse { fsError :: T.Text }
+                         | FromServerError { fsError :: T.Text }
 
 class MPDeserializable a where
     -- | Converts from a MessagePack representation.
@@ -81,8 +81,11 @@ instance MPDeserializable a => MPDeserializable (FromServerMessage a) where
                 return $ FromServerRequest { fsReqId = reqId, fsPayload = payload }
             _   -> do
                 response <- MP.fromObject =<< lookup (MP.ObjectStr "RESPONSE") m
-                return $ FromServerResponse { fsError = response }
+                return $ FromServerError { fsError = response }
     mpDeserialize _ = Nothing
+
+instance MPDeserializable MP.Object where
+    mpDeserialize = Just
 
 instance MPDeserializable a => MPDeserializable [a] where
     mpDeserialize (MP.ObjectArray a) = mapM mpDeserialize $ V.toList a
