@@ -45,15 +45,26 @@ instance MPSerializable Display where
 
 -- Creates a display request.
 displayRequest :: Authentication -> Display -> FromClientMessage Display
-displayRequest auth disp = FromClientRequest { fcReqId = 0, fcVerb = "PUT", fcAuthentication = auth, fcPayload = disp }
+displayRequest auth disp = FromClientRequest
+    { fcReqId = 0
+    , fcVerb = "PUT"
+    , fcAuthentication = auth
+    , fcPayload = disp
+    }
 
 -- Creates a request for controller stream input.
 controllerStreamRequest :: Authentication -> FromClientMessage MP.Object
-controllerStreamRequest auth = FromClientRequest { fcReqId = -1, fcVerb = "STREAM", fcAuthentication = auth, fcPayload = MP.ObjectNil }
+controllerStreamRequest auth = FromClientRequest
+    { fcReqId = -1
+    , fcVerb = "STREAM"
+    , fcAuthentication = auth
+    , fcPayload = MP.ObjectNil
+    }
 
 -- ====== SERVER -> CLIENT MESSAGES ======
 
-data FromServerMessage a = FromServerRequest { fsReqId :: Int, fsPayload :: a } | FromServerResponse { fsError :: T.Text }
+data FromServerMessage a = FromServerRequest { fsReqId :: Int, fsPayload :: a }
+                         | FromServerResponse { fsError :: T.Text }
 
 class MPDeserializable a where
     -- | Converts from a MessagePack representation.
