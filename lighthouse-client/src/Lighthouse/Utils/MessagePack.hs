@@ -8,7 +8,6 @@ module Lighthouse.Utils.MessagePack
     , MPSerializable (..), MPDeserializable (..)
     ) where
 
-import Control.Monad ((<=<))
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
