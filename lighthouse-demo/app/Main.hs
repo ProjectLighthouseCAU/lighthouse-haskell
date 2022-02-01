@@ -11,7 +11,7 @@ import Lighthouse.Connection
 import Lighthouse.Display
 import Lighthouse.Utils.Color
 import Lighthouse.Utils.General (liftMaybe)
-import System.Environment (getArgs)
+import System.Environment (getArgs, getEnv)
 import System.Random
 
 -- | Renders a single image to the lighthouse.
@@ -41,7 +41,13 @@ imgToDisplay img pxToColor = Display $ (\y -> Row $ (\x -> pxToColor $ P.pixelAt
 
 main :: IO ()
 main = do
+    -- Fetch credentials from env vars
+    username <- T.pack <$> getEnv "LIGHTHOUSE_USERNAME"
+    token    <- T.pack <$> getEnv "LIGHTHOUSE_TOKEN"
+    let auth = Authentication { username = username, token = token }
+
+    -- Render image to lighthouse
     args <- getArgs
     case args of
-        [username, token, imagePath] -> runLighthouseIO (app imagePath) $ Authentication { username = T.pack username, token = T.pack token }
-        _ -> putStrLn "Arguments: [api username] [api token] [path to png image]"
+        [imagePath] -> runLighthouseIO (app imagePath) auth
+        _           -> putStrLn "Arguments: [path to png image]"

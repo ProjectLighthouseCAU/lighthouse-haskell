@@ -6,3 +6,18 @@
 An API client for a light installation at the University of Kiel written in Haskell.
 
 ![Facade](facade.png)
+
+## Running the Demo
+
+To run the demo, first set the following environment variables
+
+```bash
+export LIGHTHOUSE_USERNAME=[your username]
+export LIGHTHOUSE_TOKEN=[your API token]
+```
+
+You can now render a demo image to the lighthouse by running
+
+```bash
+stack run -- lighthouse-demo/assets/haskell-icon-lighthouse.png
+```
