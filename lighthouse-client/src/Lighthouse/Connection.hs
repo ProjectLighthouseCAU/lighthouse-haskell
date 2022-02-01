@@ -4,7 +4,7 @@ module Lighthouse.Connection
       LighthouseIO (..), Listener (..)
     , emptyListener, runLighthouseIO
       -- * Communication with the lighthouse
-    , sendRequest, sendDisplay, sendClose
+    , sendRequest, sendDisplay, requestInputStream, sendClose
     , receiveEvent, receiveInputEvents
     ) where
 
@@ -72,6 +72,7 @@ runLighthouseIO listeners auth = withSocketsDo $
 
             -- Run event loop
             whileM_ (not <$> gets csClosed) $ runMaybeT $ do
+                liftIO $ putStrLn $ "Receiving event..."
                 ev <- MaybeT receiveEvent
                 liftIO $ putStrLn $ "Got event: " ++ show ev
                 mapM (lift . notifyListener ev) listeners
@@ -111,6 +112,10 @@ receiveEvent = (decodeEvent =<<) <$> receive
 -- | Sends a display request with the given display.
 sendDisplay :: Display -> LighthouseIO ()
 sendDisplay = sendRequest . DisplayRequest
+
+-- | Requests a stream of input events.
+requestInputStream :: LighthouseIO ()
+requestInputStream = sendRequest InputStreamRequest
 
 -- | Receives a batch of input events from the Lighthouse.
 receiveInputEvents :: LighthouseIO [InputEvent]

@@ -26,7 +26,9 @@ app imagePath = do
         Left e -> liftIO $ putStrLn e
         _ -> return ()
     
-    sendClose
+    -- DEBUG
+    requestInputStream
+    -- sendClose
 
 dynImgToDisplay :: P.DynamicImage -> Either String Display
 dynImgToDisplay dimg = case dimg of
