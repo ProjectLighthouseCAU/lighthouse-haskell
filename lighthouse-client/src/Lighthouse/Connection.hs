@@ -8,8 +8,7 @@ module Lighthouse.Connection
     , receiveEvent, receiveInputEvents
     ) where
 
-import Control.Concurrent (forkIO)
-import Control.Monad ((<=<), forever)
+import Control.Monad ((<=<))
 import Control.Monad.Trans (lift, liftIO)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Control.Monad.Trans.State
@@ -19,6 +18,7 @@ import qualified Data.Text as T
 import Lighthouse.Authentication
 import Lighthouse.Display
 import Lighthouse.Protocol
+import Lighthouse.Utils.General (whileM_)
 import Lighthouse.Utils.Serializable
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
@@ -29,6 +29,7 @@ import Data.Maybe (fromJust)
 data ConnectionState = ConnectionState
     { csConnection :: WS.Connection
     , csAuthentication :: Authentication
+    , csClosed :: Bool
     }
 
 -- | The central IO monad to be used by lighthouse applications. Holds a connection.
@@ -55,16 +56,16 @@ notifyListener ServerErrorEvent {..} l = onError l seError
 notifyListener ServerInputEvent {..} l = mapM_ (onInput l) seEvents
 
 -- | Runs a lighthouse application using the given credentials.
-runLighthouseIO :: [Listener] -> Authentication -> IO a
+runLighthouseIO :: [Listener] -> Authentication -> IO ()
 runLighthouseIO listeners auth = withSocketsDo $
     WSS.runSecureClient "lighthouse.uni-kiel.de" 443 "/websocket" $ \conn -> do
-        let state = ConnectionState { csConnection = conn, csAuthentication = auth }
+        let state = ConnectionState { csConnection = conn, csAuthentication = auth, csClosed = False }
 
         flip evalStateT state $ do
             mapM_ onConnect listeners
 
             -- Run event loop
-            forever $ runMaybeT $ do
+            whileM_ (not <$> gets csClosed) $ runMaybeT $ do
                 ev <- MaybeT receiveEvent
                 liftIO $ putStrLn $ "Got event: " ++ show ev
                 mapM (lift . notifyListener ev) listeners
@@ -116,5 +117,6 @@ receiveInputEvents = do
 sendClose :: LighthouseIO ()
 sendClose = do
     conn <- gets csConnection
+    modify $ \cs -> cs { csClosed = True }
     liftIO $ WS.sendCloseCode conn status $ T.pack "end of data"
     where status = 1000 -- normal

@@ -2,6 +2,7 @@ module Lighthouse.Utils.General
     ( fst3, snd3, thd3
     , liftMaybe
     , (<.$>), (<$.>), (<.$.>)
+    , whileM_
     ) where
 
 import Control.Monad.Trans.Maybe
@@ -33,3 +34,12 @@ f <$.> (x, y) = (x, f y)
 -- | Maps over both elements of a pair.
 (<.$.>) :: (a -> b) -> (a, a) -> (b, b)
 (<.$.>) f = (f <$.>) . (f <.$>)
+
+-- | Loops while the given condition is true.
+whileM_ :: Monad m => m Bool -> m a -> m ()
+whileM_ cond body = do
+    c <- cond
+    if c then do
+        body
+        whileM_ cond body
+    else return ()
