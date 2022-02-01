@@ -60,18 +60,14 @@ sendDisplay d = do
     auth <- lhAuth <$> get
     send $ displayRequest auth d
 
-    -- DEBUG
-    d <- receive :: LighthouseIO (Maybe (FromServerMessage MP.Object))
-    liftIO $ putStrLn $ "Got " ++ show (fsError (fromJust d))
-
 -- | Receives a batch of key event from the Lighthouse.
 receiveKeyEvents :: LighthouseIO [KeyEvent]
 receiveKeyEvents = do
     dat <- receiveBinaryData
     case deserialize dat of
-        Just FromServerRequest {..} -> return fsPayload
-        Just FromServerError {..} -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack fsError
-                                        return []
+        Just ServerRequest {..} -> return sPayload
+        Just ServerError {..} -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack sError
+                                    return []
         Nothing -> do liftIO $ putStrLn "Got unrecognized message from server"
                       return []
 
