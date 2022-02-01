@@ -11,9 +11,10 @@ module Lighthouse.Protocol
     ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad ((<=<))
+import Control.Monad ((<=<), guard)
 import qualified Data.ByteString.Lazy as BL
-import Data.Maybe (isJust)
+import Data.Foldable (concat)
+import Data.Maybe (isJust, mapMaybe)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -77,7 +78,7 @@ instance Serializable ClientMessage where
 -- Server -> client messages
 
 -- | High-level server -> client message structure.
-data ServerEvent = ServerErrorEvent { seError :: T.Text }
+data ServerEvent = ServerErrorEvent { seWarnings :: [T.Text], seError :: Maybe T.Text }
                  | ServerInputEvent { seEvents :: [InputEvent] }
     deriving (Show, Eq)
 
@@ -98,6 +99,7 @@ data Input = KeyInput { iKey :: Int }
 data ServerMessage = ServerMessage
     { sRNum :: Int
     , sReqId :: Maybe Int
+    , sWarnings :: [T.Text]
     , sResponse :: Maybe T.Text
     , sPayload :: Maybe MP.Object
     }
@@ -107,7 +109,9 @@ data ServerMessage = ServerMessage
 decodeEvent :: ServerMessage -> Maybe ServerEvent
 decodeEvent ServerMessage {..} = case sRNum of
     200 -> ServerInputEvent <$> (mpDeserialize =<< sPayload)
-    _   -> ServerErrorEvent <$> sResponse
+    _   -> do
+        guard (not (null sWarnings) || isJust sResponse)
+        Just $ ServerErrorEvent sWarnings sResponse
 
 instance MPDeserializable ServerMessage where
     mpDeserialize (MP.ObjectMap vm) = do
@@ -117,6 +121,7 @@ instance MPDeserializable ServerMessage where
             { sRNum = rnum
             , sReqId = mpUnInt =<< lookup (mpStr "REOD") m
             , sResponse = mpUnStr =<< lookup (mpStr "RESPONSE") m
+            , sWarnings = mapMaybe mpUnStr (concat (mpUnArray =<< lookup (mpStr "WARNINGS") m))
             , sPayload = lookup (mpStr "PAYL") m
             }
     mpDeserialize _ = Nothing

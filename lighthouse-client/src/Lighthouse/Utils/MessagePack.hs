@@ -3,7 +3,7 @@ module Lighthouse.Utils.MessagePack
     ( -- * Convenience functions for construction
       mpStr, mpInt, mpBool, mpMap, mpArray, mpBin, mpNil
       -- * Convenience functions for deconstruction
-    , mpUnStr, mpUnInt, mpUnBool
+    , mpUnStr, mpUnInt, mpUnBool, mpUnArray
       -- * Conversions to and from MessagePack
     , MPSerializable (..), MPDeserializable (..)
     ) where
@@ -57,6 +57,11 @@ mpUnInt _ = Nothing
 mpUnBool :: MP.Object -> Maybe Bool
 mpUnBool (MP.ObjectBool b) = Just b
 mpUnBool _ = Nothing
+
+-- | Deconstructs a MessagePack array.
+mpUnArray :: MP.Object -> Maybe [MP.Object]
+mpUnArray (MP.ObjectArray v) = Just $ V.toList v
+mpUnArray _ = Nothing
 
 class MPSerializable a where
     -- | Converts to a MessagePack representation.

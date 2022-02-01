@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Lighthouse.Connection
     ( -- * The LighthouseIO monad
       LighthouseIO (..), Listener (..)
@@ -13,6 +13,8 @@ import Control.Monad.Trans (lift, liftIO)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Control.Monad.Trans.State
 import qualified Data.ByteString.Lazy as BL
+import Data.Foldable (sequence_)
+import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import Lighthouse.Authentication
@@ -23,7 +25,6 @@ import Lighthouse.Utils.Serializable
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified Wuss as WSS
-import Data.Maybe (fromJust)
 
 -- | Stores the WebSocket connection and the credentials.
 data ConnectionState = ConnectionState
@@ -39,28 +40,32 @@ type LighthouseIO = StateT ConnectionState IO
 -- | A listener for events from the server.
 data Listener = Listener
     { onConnect :: LighthouseIO ()
-    , onInput :: InputEvent -> LighthouseIO ()
-    , onError :: T.Text     -> LighthouseIO ()
+    , onInput   :: InputEvent -> LighthouseIO ()
+    , onError   :: T.Text     -> LighthouseIO ()
+    , onWarning :: T.Text     -> LighthouseIO ()
     }
 
 -- | Creates an empty listener.
 emptyListener :: Listener
 emptyListener = Listener
     { onConnect = return ()
-    , onInput = \_ -> return ()
-    , onError = \_ -> return ()
+    , onInput   = \_ -> return ()
+    , onError   = \_ -> return ()
+    , onWarning = \_ -> return ()
     }
 
 -- | Passes an event to the given listener.
 notifyListener :: ServerEvent -> Listener -> LighthouseIO ()
-notifyListener ServerErrorEvent {..} l = onError l seError
+notifyListener ServerErrorEvent {..} l = do
+    sequence_ (onError l <$> seError)
+    mapM_ (onWarning l) seWarnings
 notifyListener ServerInputEvent {..} l = mapM_ (onInput l) seEvents
 
 -- | Runs a lighthouse application using the given credentials.
 runLighthouseIO :: [Listener] -> Authentication -> IO ()
 runLighthouseIO listeners auth = withSocketsDo $
     WSS.runSecureClient "lighthouse.uni-kiel.de" 443 "/websocket" $ \conn -> do
-        let state = ConnectionState { csConnection = conn, csAuthentication = auth, csClosed = False }
+        let state = ConnectionState { csConnection = conn, csAuthentication = auth, csClosed = False, csRequestId = 0 }
 
         flip evalStateT state $ do
             mapM_ onConnect listeners
@@ -113,7 +118,7 @@ receiveInputEvents = do
     e <- receiveEvent
     case e of
         Just ServerInputEvent {..} -> return seEvents
-        Just ServerErrorEvent {..} -> error $ "Got error from server: " ++ T.unpack seError
+        Just ServerErrorEvent {..} -> error $ T.unpack $ "Got error from server: " <> fromMaybe "" seError <> " (warnings: " <> T.intercalate ", " seWarnings <> ")"
         _ -> error "Got unrecognized response to key events from server"
 
 -- | Sends a close message.
