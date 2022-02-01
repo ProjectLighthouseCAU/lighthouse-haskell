@@ -36,11 +36,13 @@ dynImgToDisplay dimg = case dimg of
     where mkColor r g b = Color (fromIntegral r) (fromIntegral g) (fromIntegral b)
 
 imgToDisplay :: P.Pixel a => P.Image a -> (a -> Color) -> Display
-imgToDisplay img pixToColor = Display $ rowAt <$> [0..height - 1]
+imgToDisplay img pixToColor = Display $ rowAt <$> [0..lighthouseRows - 1]
     where width     = P.imageWidth img
           height    = P.imageHeight img
-          rowAt y   = Row $ (pixAt y) <$> [0..width - 1]
-          pixAt y x = pixToColor $ P.pixelAt img x y
+          rowAt y   = Row $ (pixAt y) <$> [0..lighthouseCols - 1]
+          pixAt y x = pixToColor $ P.pixelAt img
+            ((x * width) `div` lighthouseCols)
+            ((y * height) `div` lighthouseRows)
 
 main :: IO ()
 main = do
