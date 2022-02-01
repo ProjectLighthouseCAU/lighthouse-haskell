@@ -68,18 +68,16 @@ receive = deserialize <$> receiveBinaryData
 sendDisplay :: Display -> LighthouseIO ()
 sendDisplay d = do
     auth <- lhAuth <$> get
-    send $ displayRequest auth d
+    send $ encodeRequest auth $ DisplayRequest d
 
 -- | Receives a batch of key event from the Lighthouse.
 receiveKeyEvents :: LighthouseIO [KeyEvent]
 receiveKeyEvents = do
-    dat <- receiveBinaryData
-    case deserialize dat of
-        Just ServerRequest {..} -> return sPayload
-        Just ServerError {..} -> do liftIO $ putStrLn $ "Got error from server: " ++ T.unpack sError
-                                    return []
-        Nothing -> do liftIO $ putStrLn "Got unrecognized message from server"
-                      return []
+    dat <- receive
+    case decodeEvent =<< dat of
+        Just ServerKeysEvent {..} -> return seEvents
+        Just ServerErrorEvent {..} -> error $ "Got error from server: " ++ T.unpack seError
+        _ -> error "Got unrecognized response to key events from server"
 
 -- | Sends a close message.
 sendClose :: LighthouseIO ()

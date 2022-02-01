@@ -3,12 +3,15 @@ module Lighthouse.Protocol
     ( -- * Client -> server messages
       ClientRequest(..)
     , ClientMessage (..)
+    , encodeRequest
      -- * Server -> client messages
-    , ServerEvent (..)
+    , ServerEvent (..), KeyEvent (..)
     , ServerMessage (..)
+    , decodeEvent
     ) where
 
 import Control.Applicative ((<|>))
+import Control.Monad ((<=<))
 import qualified Data.ByteString.Lazy as BL
 import Data.Maybe (isJust)
 import qualified Data.MessagePack as MP
@@ -66,11 +69,14 @@ instance MPSerializable ClientMessage where
 instance MPSerializable Display where
     mpSerialize = MP.ObjectBin . BL.toStrict . serialize
 
+instance Serializable ClientMessage where
+    serialize = MP.pack . mpSerialize
+
 -- Server -> client messages
 
 -- | High-level server -> client message structure.
-data ServerEvent = ServerErrorEvent { srError :: T.Text }
-                 | ServerKeysEvent { srEvents :: [KeyEvent] }
+data ServerEvent = ServerErrorEvent { seError :: T.Text }
+                 | ServerKeysEvent { seEvents :: [KeyEvent] }
 
 -- | A key event emitted via the web interface.
 data KeyEvent = KeyEvent
@@ -122,3 +128,6 @@ instance MPDeserializable KeyEvent where
             , keIsDown = dwn
             }
     mpDeserialize _ = Nothing
+
+instance Deserializable ServerMessage where
+    deserialize = mpDeserialize <=< MP.unpack

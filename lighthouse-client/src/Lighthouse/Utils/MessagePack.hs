@@ -66,9 +66,6 @@ class MPSerializable a where
 instance MPSerializable MP.Object where
     mpSerialize = id
 
-instance MPSerializable a => Serializable a where
-    serialize = MP.pack . mpSerialize
-
 class MPDeserializable a where
     -- | Converts from a MessagePack representation.
     mpDeserialize :: MP.Object -> Maybe a
@@ -82,6 +79,3 @@ instance MPDeserializable MP.Object where
 instance MPDeserializable a => MPDeserializable [a] where
     mpDeserialize (MP.ObjectArray a) = mapM mpDeserialize $ V.toList a
     mpDeserialize _ = Nothing
-
-instance MPDeserializable a => Deserializable a where
-    deserialize = mpDeserialize <=< MP.unpack
