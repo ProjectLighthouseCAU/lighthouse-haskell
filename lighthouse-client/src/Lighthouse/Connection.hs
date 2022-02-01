@@ -4,7 +4,7 @@ module Lighthouse.Connection
       LighthouseIO (..), Listener (..)
     , emptyListener, runLighthouseIO
       -- * Communication with the lighthouse
-    , sendRequest, sendDisplay, requestInputStream, sendClose
+    , sendRequest, sendDisplay, requestStream, sendClose
     , receiveEvent
     ) where
 
@@ -116,9 +116,9 @@ receiveEvent = (decodeEvent =<<) <$> receive
 sendDisplay :: Display -> LighthouseIO ()
 sendDisplay = sendRequest . DisplayRequest
 
--- | Requests a stream of input events.
-requestInputStream :: LighthouseIO ()
-requestInputStream = sendRequest InputStreamRequest
+-- | Requests a stream of the model, including input events and the display (though the latter is undocumented).
+requestStream :: LighthouseIO ()
+requestStream = sendRequest StreamRequest
 
 -- | Sends a close message.
 sendClose :: LighthouseIO ()

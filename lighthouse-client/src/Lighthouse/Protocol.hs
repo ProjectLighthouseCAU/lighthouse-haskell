@@ -30,7 +30,7 @@ import Lighthouse.Utils.Serializable
 
 -- | High-level client -> server message structure.
 data ClientRequest = DisplayRequest { crDisplay :: Display }
-                   | InputStreamRequest
+                   | StreamRequest
     deriving (Show, Eq)
 
 -- | Low-level client -> server message structure.
@@ -52,7 +52,7 @@ encodeRequest reqId auth (DisplayRequest disp) = ClientMessage
     , cAuthentication = auth
     , cPayload = mpSerialize disp
     }
-encodeRequest reqId auth InputStreamRequest = ClientMessage
+encodeRequest reqId auth StreamRequest = ClientMessage
     { cRequestId = reqId
     , cVerb = "STREAM"
     , cPath = ["user", username auth, "model"]

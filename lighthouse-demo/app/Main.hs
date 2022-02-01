@@ -27,7 +27,7 @@ app imagePath = do
         _ -> return ()
     
     -- DEBUG
-    requestInputStream
+    requestStream
     -- sendClose
 
 dynImgToDisplay :: P.DynamicImage -> Either String Display
