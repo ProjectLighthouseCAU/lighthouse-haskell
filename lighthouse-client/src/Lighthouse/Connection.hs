@@ -5,12 +5,11 @@ module Lighthouse.Connection
     , emptyListener, runLighthouseIO
       -- * Communication with the lighthouse
     , sendRequest, sendDisplay, requestInputStream, sendClose
-    , receiveEvent, receiveInputEvents
+    , receiveEvent
     ) where
 
 import Control.Monad ((<=<))
-import Control.Monad.Trans (lift, liftIO)
-import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Control.Monad.Trans (liftIO)
 import Control.Monad.Trans.State
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (sequence_)
@@ -71,11 +70,15 @@ runLighthouseIO listeners auth = withSocketsDo $
             mapM_ onConnect listeners
 
             -- Run event loop
-            whileM_ (not <$> gets csClosed) $ runMaybeT $ do
+            whileM_ (not <$> gets csClosed) $ do
                 liftIO $ putStrLn $ "Receiving event..."
-                ev <- MaybeT receiveEvent
-                liftIO $ putStrLn $ "Got event: " ++ show ev
-                mapM (lift . notifyListener ev) listeners
+                e <- receiveEvent
+
+                case e of
+                    Left err -> liftIO $ putStrLn $ "Error decoding event: " ++ T.unpack err
+                    Right e' -> do
+                        liftIO $ putStrLn $ "Got event: " ++ show e'
+                        mapM_ (notifyListener e') listeners
 
 -- | Sends raw, binary data directly to the lighthouse.
 sendBinaryData :: BL.ByteString -> LighthouseIO ()
@@ -94,7 +97,7 @@ send :: Serializable a => a -> LighthouseIO ()
 send = sendBinaryData . serialize
 
 -- | Receives a deserializable value from the lighthouse.
-receive :: Deserializable a => LighthouseIO (Maybe a)
+receive :: Deserializable a => LighthouseIO (Either T.Text a)
 receive = deserialize <$> receiveBinaryData
 
 -- | Sends a request to the lighthouse.
@@ -106,7 +109,7 @@ sendRequest r = do
     send $ encodeRequest reqId auth r
 
 -- | Receives an event from the lighthouse.
-receiveEvent :: LighthouseIO (Maybe ServerEvent)
+receiveEvent :: LighthouseIO (Either T.Text ServerEvent)
 receiveEvent = (decodeEvent =<<) <$> receive
 
 -- | Sends a display request with the given display.
@@ -116,15 +119,6 @@ sendDisplay = sendRequest . DisplayRequest
 -- | Requests a stream of input events.
 requestInputStream :: LighthouseIO ()
 requestInputStream = sendRequest InputStreamRequest
-
--- | Receives a batch of input events from the Lighthouse.
-receiveInputEvents :: LighthouseIO [InputEvent]
-receiveInputEvents = do
-    e <- receiveEvent
-    case e of
-        Just ServerInputEvent {..} -> return seEvents
-        Just ServerErrorEvent {..} -> error $ T.unpack $ "Got error from server: " <> fromMaybe "" seError <> " (warnings: " <> T.intercalate ", " seWarnings <> ")"
-        _ -> error "Got unrecognized response to key events from server"
 
 -- | Sends a close message.
 sendClose :: LighthouseIO ()

@@ -13,14 +13,16 @@ module Lighthouse.Protocol
 import Control.Applicative ((<|>))
 import Control.Monad ((<=<), guard)
 import qualified Data.ByteString.Lazy as BL
+import Data.Either (fromRight)
 import Data.Foldable (concat)
 import Data.Maybe (isJust, mapMaybe)
+import Data.Traversable (traverse)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Lighthouse.Authentication
 import Lighthouse.Display
-import Lighthouse.Utils.General ((<.$>))
+import Lighthouse.Utils.General ((<.$>), maybeToRight, rightToMaybe)
 import Lighthouse.Utils.MessagePack
 import Lighthouse.Utils.Serializable
 
@@ -106,40 +108,40 @@ data ServerMessage = ServerMessage
     deriving (Show, Eq)
 
 -- | Decodes a ServerMessage to a ServerEvent.
-decodeEvent :: ServerMessage -> Maybe ServerEvent
+decodeEvent :: ServerMessage -> Either T.Text ServerEvent
 decodeEvent ServerMessage {..} = case sRNum of
-    200 -> ServerInputEvent <$> (mpDeserialize =<< sPayload)
-    _   -> do
-        guard (not (null sWarnings) || isJust sResponse)
-        Just $ ServerErrorEvent sWarnings sResponse
+    200 -> ServerInputEvent <$> (mpDeserialize =<< maybeToRight "Could not decode as input, no payload" sPayload)
+    _ | (not (null sWarnings) || isJust sResponse) -> Left "Could not decode as error, no response/warnings!"
+      | otherwise                                  -> Right $ ServerErrorEvent sWarnings sResponse
 
 instance MPDeserializable ServerMessage where
     mpDeserialize (MP.ObjectMap vm) = do
         let m = V.toList vm
-        rnum <- mpUnInt =<< lookup (mpStr "RNUM") m
+        rnum <- mpUnInt =<< mpLookup "RNUM" m
         return ServerMessage
             { sRNum = rnum
-            , sReqId = mpUnInt =<< lookup (mpStr "REOD") m
-            , sResponse = mpUnStr =<< lookup (mpStr "RESPONSE") m
-            , sWarnings = mapMaybe mpUnStr (concat (mpUnArray =<< lookup (mpStr "WARNINGS") m))
-            , sPayload = lookup (mpStr "PAYL") m
+            , sReqId = rightToMaybe (mpUnInt =<< mpLookup "REOD" m)
+            , sResponse = rightToMaybe (mpUnStr =<< mpLookup "RESPONSE" m)
+            , sWarnings = fromRight [] (traverse mpUnStr (concat (mpUnArray =<< mpLookup "WARNINGS" m)))
+            , sPayload = rightToMaybe (mpLookup "PAYL" m)
             }
-    mpDeserialize _ = Nothing
+    mpDeserialize o = Left $ "Could not deserialize as server message (not a map): " <> T.pack (show o)
 
 instance MPDeserializable InputEvent where
     mpDeserialize (MP.ObjectMap vo) = do
         let o = V.toList vo
-        src <- mpUnInt =<< lookup (mpStr "src") o
-        let key = mpUnInt =<< lookup (mpStr "key") o
-            btn = mpUnInt =<< lookup (mpStr "btn") o
-        input <- (KeyInput <$> key) <|> (ControllerInput <$> btn)
-        dwn <- mpUnBool =<< lookup (mpStr "dwn") o
+        src <- mpUnInt =<< mpLookup "src" o
+        let key = mpUnInt =<< mpLookup "key" o
+            btn = mpUnInt =<< mpLookup "btn" o
+        input <- (KeyInput <$> key) <> (ControllerInput <$> btn)
+        dwn <- mpUnBool =<< mpLookup "dwn" o
         return InputEvent
             { keSource = src
             , keInput = input
             , keIsDown = dwn
             }
-    mpDeserialize _ = Nothing
+    mpDeserialize o = Left $ "Could not deserialize as input event (not a map): " <> T.pack (show o)
 
 instance Deserializable ServerMessage where
-    deserialize = mpDeserialize <=< MP.unpack
+    deserialize = mpDeserialize <=< (maybeToRight errMsg . MP.unpack)
+        where errMsg = "Could not deserialize server message as MessagePack object" 

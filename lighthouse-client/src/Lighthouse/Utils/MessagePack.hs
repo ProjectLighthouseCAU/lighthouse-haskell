@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings, FlexibleInstances, UndecidableInstances #-}
 module Lighthouse.Utils.MessagePack
     ( -- * Convenience functions for construction
       mpStr, mpInt, mpBool, mpMap, mpArray, mpBin, mpNil
       -- * Convenience functions for deconstruction
-    , mpUnStr, mpUnInt, mpUnBool, mpUnArray
+    , mpUnStr, mpUnInt, mpUnBool, mpUnArray, mpUnMap, mpLookup
       -- * Conversions to and from MessagePack
     , MPSerializable (..), MPDeserializable (..)
     ) where
@@ -12,7 +12,7 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import Lighthouse.Utils.General ((<.$>))
+import Lighthouse.Utils.General ((<.$>), maybeToRight)
 import Lighthouse.Utils.Serializable
 
 -- | Creates a MessagePack string.
@@ -44,24 +44,34 @@ mpNil :: MP.Object
 mpNil = MP.ObjectNil
 
 -- | Deconstructs a MessagePack string.
-mpUnStr :: MP.Object -> Maybe T.Text
-mpUnStr (MP.ObjectStr t) = Just t
-mpUnStr _ = Nothing
+mpUnStr :: MP.Object -> Either T.Text T.Text
+mpUnStr (MP.ObjectStr t) = Right t
+mpUnStr o = Left $ "Could not deconstruct " <> T.pack (show o) <> " as string"
 
 -- | Deconstructs a MessagePack integer.
-mpUnInt :: MP.Object -> Maybe Int
-mpUnInt (MP.ObjectInt n) = Just n
-mpUnInt _ = Nothing
+mpUnInt :: MP.Object -> Either T.Text Int
+mpUnInt (MP.ObjectInt n) = Right n
+mpUnInt o = Left $ "Could not deconstruct " <> T.pack (show o) <> " as int"
 
 -- | Deconstructs a MessagePack boolean.
-mpUnBool :: MP.Object -> Maybe Bool
-mpUnBool (MP.ObjectBool b) = Just b
-mpUnBool _ = Nothing
+mpUnBool :: MP.Object -> Either T.Text Bool
+mpUnBool (MP.ObjectBool b) = Right b
+mpUnBool o = Left $ "Could not deconstruct " <> T.pack (show o) <> " as bool"
 
 -- | Deconstructs a MessagePack array.
-mpUnArray :: MP.Object -> Maybe [MP.Object]
-mpUnArray (MP.ObjectArray v) = Just $ V.toList v
-mpUnArray _ = Nothing
+mpUnArray :: MP.Object -> Either T.Text [MP.Object]
+mpUnArray (MP.ObjectArray v) = Right $ V.toList v
+mpUnArray o = Left $ "Could not deconstruct " <> T.pack (show o) <> " as array"
+
+-- | Deconstructs a MessagePack map.
+mpUnMap :: MP.Object -> Either T.Text [(MP.Object, MP.Object)]
+mpUnMap (MP.ObjectMap v) = Right $ V.toList v
+mpUnMap o = Left $ "Could not deconstruct " <> T.pack (show o) <> " as map"
+
+-- | Looks up a key in a deconstructed MessagePack map.
+mpLookup :: T.Text -> [(MP.Object, MP.Object)] -> Either T.Text MP.Object
+mpLookup key m = maybeToRight errMsg $ lookup (mpStr key) m
+    where errMsg = "Could not find key " <> key <> " in " <> T.pack (show m)
 
 class MPSerializable a where
     -- | Converts to a MessagePack representation.
@@ -72,14 +82,14 @@ instance MPSerializable MP.Object where
 
 class MPDeserializable a where
     -- | Converts from a MessagePack representation.
-    mpDeserialize :: MP.Object -> Maybe a
+    mpDeserialize :: MP.Object -> Either T.Text a
 
 instance MPDeserializable () where
-    mpDeserialize _ = Just () -- we don't care about the result
+    mpDeserialize _ = Right () -- we don't care about the result
 
 instance MPDeserializable MP.Object where
-    mpDeserialize = Just
+    mpDeserialize = Right
 
 instance MPDeserializable a => MPDeserializable [a] where
     mpDeserialize (MP.ObjectArray a) = mapM mpDeserialize $ V.toList a
-    mpDeserialize _ = Nothing
+    mpDeserialize o = Left $ "Could not deserialize as array: " <> T.pack (show o)

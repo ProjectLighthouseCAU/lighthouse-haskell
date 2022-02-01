@@ -4,6 +4,7 @@ module Lighthouse.Utils.Serializable
     ) where
 
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.Text as T
 
 class Serializable t where
     -- | Converts to a binary representation.
@@ -11,4 +12,4 @@ class Serializable t where
 
 class Deserializable t where
     -- | Converts from a binary representation.
-    deserialize :: BL.ByteString -> Maybe t
+    deserialize :: BL.ByteString -> Either T.Text t
