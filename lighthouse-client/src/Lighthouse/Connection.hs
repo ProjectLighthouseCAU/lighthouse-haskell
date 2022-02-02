@@ -2,7 +2,7 @@
 module Lighthouse.Connection
     ( -- * The LighthouseIO monad
       LighthouseIO (..), Listener (..)
-    , runLighthouseApp, runLighthouseIO
+    , runLighthouseApp, runLighthouseIO, getUserState, putUserState, modifyUserState
       -- * Communication with the lighthouse
     , sendRequest, sendDisplay, requestStream, sendClose
     , receiveEvent
@@ -30,11 +30,12 @@ import qualified Network.WebSockets as WS
 import qualified Wuss as WSS
 
 -- | Stores the WebSocket connection and the credentials.
-data ConnectionState = ConnectionState
+data ConnectionState s = ConnectionState
     { csConnection :: WS.Connection
-    , csOptions    :: Options
+    , csOptions    :: Options s
     , csRequestId  :: Int
     , csClosed     :: Bool
+    , csUserState  :: s
     }
 
 -- Implementation note: We use the trick from https://stackoverflow.com/a/32572657 to
@@ -42,40 +43,40 @@ data ConnectionState = ConnectionState
 -- GeneralizedNewtypeDeriving.
 
 -- | The central IO-ish monad to be used by lighthouse applications. Holds a connection.
-newtype LighthouseIO a = LighthouseIO (StateT ConnectionState IO a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadState ConnectionState)
+newtype LighthouseIO s a = LighthouseIO (StateT (ConnectionState s) IO a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadState (ConnectionState s))
 
-instance MonadLogger LighthouseIO where
+instance MonadLogger (LighthouseIO s) where
     logMessage m = do
         handleMessage <- gets (optLogHandler . csOptions)
         liftIO $ handleMessage m
 
 -- | A listener for events from the server.
-data Listener = Listener
-    { onConnect :: LighthouseIO ()
-    , onInput   :: InputEvent -> LighthouseIO ()
+data Listener s = Listener
+    { onConnect :: LighthouseIO s ()
+    , onInput   :: InputEvent -> LighthouseIO s ()
     }
 
-instance Semigroup Listener where
+instance Semigroup (Listener s) where
     l1 <> l2 = Listener
         { onConnect = onConnect l1 >> onConnect l2
         , onInput   = \i -> onInput l1 i >> onInput l2 i
         }
 
-instance Monoid Listener where
+instance Monoid (Listener s) where
     mempty = Listener
         { onConnect = return ()
         , onInput   = \_ -> return ()
         }
 
 -- | Passes an event to the given listener.
-notifyListener :: ServerEvent -> Listener -> LighthouseIO ()
+notifyListener :: ServerEvent -> Listener s -> LighthouseIO s ()
 notifyListener e l = case e of
     ServerInputEvent {..} -> onInput l seEvent
     _                     -> return ()
 
 -- | Runs a lighthouse application using the given credentials.
-runLighthouseApp :: Listener -> Options -> IO ()
+runLighthouseApp :: Listener s -> Options s -> IO ()
 runLighthouseApp listener = runLighthouseIO $ do
     onConnect listener
 
@@ -98,34 +99,51 @@ runLighthouseApp listener = runLighthouseIO $ do
           onError   e = logError "runLighthouseApp" $ "Server error: " <> e
 
 -- | Runs a single LighthouseIO using the given credentials.
-runLighthouseIO :: LighthouseIO a -> Options -> IO a
+runLighthouseIO :: LighthouseIO s a -> Options s -> IO a
 runLighthouseIO (LighthouseIO lio) opts = withSocketsDo $
     WSS.runSecureClient "lighthouse.uni-kiel.de" 443 "/websocket" $ \conn -> do
-        let state = ConnectionState { csConnection = conn, csOptions = opts, csClosed = False, csRequestId = 0 }
+        let state = ConnectionState { csConnection = conn
+                                    , csOptions = opts
+                                    , csClosed = False
+                                    , csRequestId = 0
+                                    , csUserState = optInitialState opts
+                                    }
         evalStateT lio state
 
+-- | Fetches the user state from the LighthouseIO monad.
+getUserState :: LighthouseIO s s
+getUserState = gets csUserState
+
+-- | Updates the user state from the LighthouseIO monad.
+putUserState :: s -> LighthouseIO s ()
+putUserState = modifyUserState . const
+
+-- | Modifies the user state from the LighthouseIO monad.
+modifyUserState :: (s -> s) -> LighthouseIO s ()
+modifyUserState f = modify $ \cs -> cs { csUserState = f (csUserState cs) }
+
 -- | Sends raw, binary data directly to the lighthouse.
-sendBinaryData :: BL.ByteString -> LighthouseIO ()
+sendBinaryData :: BL.ByteString -> LighthouseIO s ()
 sendBinaryData d = do
     conn <- gets csConnection
     liftIO $ WS.sendBinaryData conn d
 
 -- | Receives raw, binary data directly from the lighthouse.
-receiveBinaryData :: LighthouseIO BL.ByteString
+receiveBinaryData :: LighthouseIO s BL.ByteString
 receiveBinaryData = do
     conn <- gets csConnection
     liftIO $ WS.receiveData conn
 
 -- | Send a serializable value to the lighthouse.
-send :: Serializable a => a -> LighthouseIO ()
+send :: Serializable a => a -> LighthouseIO s ()
 send = sendBinaryData . serialize
 
 -- | Receives a deserializable value from the lighthouse.
-receive :: Deserializable a => LighthouseIO (Either T.Text a)
+receive :: Deserializable a => LighthouseIO s (Either T.Text a)
 receive = deserialize <$> receiveBinaryData
 
 -- | Sends a request to the lighthouse.
-sendRequest :: ClientRequest -> LighthouseIO ()
+sendRequest :: ClientRequest -> LighthouseIO s ()
 sendRequest r = do
     auth <- gets (optAuthentication . csOptions)
     reqId <- gets csRequestId
@@ -133,22 +151,22 @@ sendRequest r = do
     send $ encodeRequest reqId auth r
 
 -- | Receives an event from the lighthouse.
-receiveEvent :: LighthouseIO (Either T.Text ServerEvent)
+receiveEvent :: LighthouseIO s (Either T.Text ServerEvent)
 receiveEvent = runExceptT $ do
     raw <- ExceptT receive
     logTrace "receiveEvent" $ "Got " <> T.pack (show raw)
     ExceptT $ return $ decodeEvent raw
 
 -- | Sends a display request with the given display.
-sendDisplay :: Display -> LighthouseIO ()
+sendDisplay :: Display -> LighthouseIO s ()
 sendDisplay = sendRequest . DisplayRequest
 
 -- | Requests a stream of the model, including input events and the display (though the latter is undocumented).
-requestStream :: LighthouseIO ()
+requestStream :: LighthouseIO s ()
 requestStream = sendRequest StreamRequest
 
 -- | Sends a close message.
-sendClose :: LighthouseIO ()
+sendClose :: LighthouseIO s ()
 sendClose = do
     conn <- gets csConnection
     modify $ \cs -> cs { csClosed = True }

@@ -17,7 +17,7 @@ import System.Environment (getArgs, getEnv)
 import System.Random
 
 -- | Renders a single image to the lighthouse.
-app :: String -> Listener
+app :: String -> Listener ()
 app imagePath = mempty
     { onConnect = do
         res <- runExceptT $ do
@@ -55,8 +55,10 @@ main = do
     -- Fetch credentials from env vars
     username <- T.pack <$> getEnv "LIGHTHOUSE_USERNAME"
     token    <- T.pack <$> getEnv "LIGHTHOUSE_TOKEN"
-    let auth  = Authentication { authUsername = username, authToken = token }
-        opts  = Options { optAuthentication = auth, optLogHandler = simpleLogHandler infoLevel }
+    let opts  = Options { optAuthentication = Authentication { authUsername = username, authToken = token }
+                        , optLogHandler = simpleLogHandler infoLevel
+                        , optInitialState = ()
+                        }
 
     -- Render image to lighthouse
     args <- getArgs

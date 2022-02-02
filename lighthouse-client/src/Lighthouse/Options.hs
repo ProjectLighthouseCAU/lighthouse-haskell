@@ -7,9 +7,10 @@ import qualified Data.Text as T
 import Lighthouse.Utils.Logging (LogHandler)
 
 -- | Configuration options.
-data Options = Options
+data Options s = Options
     { optAuthentication :: Authentication
     , optLogHandler     :: LogHandler
+    , optInitialState   :: s
     }
 
 -- | Authentication details for the Lighthouse.
