@@ -13,6 +13,12 @@ module Lighthouse.Utils.Logging
     ) where
 
 import Control.Monad (guard)
+import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Except (ExceptT (..))
+import Control.Monad.Trans.Reader (ReaderT (..))
+import Control.Monad.Trans.Maybe (MaybeT (..))
+import Control.Monad.Trans.State (StateT (..))
+import Control.Monad.Trans.Writer (WriterT (..))
 import qualified Data.Text as T
 
 -- | The level to log at.
@@ -53,6 +59,21 @@ simpleLogHandler handlerLevel LogMessage {..} = do
 class Monad m => MonadLogger m where
     -- | Logs the given message within the monad.
     logMessage :: LogMessage -> m ()
+
+instance MonadLogger m => MonadLogger (ExceptT e m) where
+    logMessage = lift . logMessage
+
+instance MonadLogger m => MonadLogger (ReaderT r m) where
+    logMessage = lift . logMessage
+
+instance MonadLogger m => MonadLogger (MaybeT m) where
+    logMessage = lift . logMessage
+
+instance MonadLogger m => MonadLogger (StateT s m) where
+    logMessage = lift . logMessage
+
+instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
+    logMessage = lift . logMessage
 
 -- | Logs a message at the error level.
 logError :: MonadLogger m => T.Text -> T.Text -> m ()

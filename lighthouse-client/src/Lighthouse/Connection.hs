@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving #-}
 module Lighthouse.Connection
     ( -- * The LighthouseIO monad
       LighthouseIO (..), Listener (..)
@@ -9,9 +9,11 @@ module Lighthouse.Connection
     ) where
 
 import Control.Monad ((<=<))
-import Control.Monad.Trans (liftIO)
+import Control.Monad.State.Class (MonadState (..), gets, modify)
+import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Trans.Class (MonadTrans (..))
 import Control.Monad.Trans.Except (ExceptT (..), runExceptT)
-import Control.Monad.Trans.State
+import Control.Monad.Trans.State (StateT, evalStateT)
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (sequence_)
 import Data.Maybe (fromJust, fromMaybe)
@@ -35,8 +37,18 @@ data ConnectionState = ConnectionState
     , csClosed     :: Bool
     }
 
--- | The central IO monad to be used by lighthouse applications. Holds a connection.
-type LighthouseIO = StateT ConnectionState IO
+-- Implementation note: We use the trick from https://stackoverflow.com/a/32572657 to
+-- define our monad transformer stack using a newtype and derive most instances with
+-- GeneralizedNewtypeDeriving.
+
+-- | The central IO-ish monad to be used by lighthouse applications. Holds a connection.
+newtype LighthouseIO a = LighthouseIO (StateT ConnectionState IO a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadState ConnectionState)
+
+instance MonadLogger LighthouseIO where
+    logMessage m = do
+        handleMessage <- gets (optLogHandler . csOptions)
+        liftIO $ handleMessage m
 
 -- | A listener for events from the server.
 data Listener = Listener
@@ -76,18 +88,18 @@ runLighthouseApp listener = runLighthouseIO $ do
 
     -- Run event loop
     whileM_ (not <$> gets csClosed) $ do
-        liftIO $ putStrLn $ "Receiving event..."
+        logInfo "runLighthouseApp" $ "Receiving event..."
         e <- receiveEvent
 
         case e of
-            Left err -> liftIO $ putStrLn $ "Got unrecognized event: " ++ T.unpack err
+            Left err -> logWarn "runLighthouseApp" $ "Got unrecognized event: " <> err
             Right e' -> do
-                liftIO $ putStrLn $ "Got event: " ++ show e'
+                logDebug "runLighthouseApp" $ "Got event: " <> T.pack (show e')
                 notifyListener e' listener
 
 -- | Runs a single LighthouseIO using the given credentials.
 runLighthouseIO :: LighthouseIO a -> Options -> IO a
-runLighthouseIO lio opts = withSocketsDo $
+runLighthouseIO (LighthouseIO lio) opts = withSocketsDo $
     WSS.runSecureClient "lighthouse.uni-kiel.de" 443 "/websocket" $ \conn -> do
         let state = ConnectionState { csConnection = conn, csOptions = opts, csClosed = False, csRequestId = 0 }
         evalStateT lio state
@@ -124,7 +136,7 @@ sendRequest r = do
 receiveEvent :: LighthouseIO (Either T.Text ServerEvent)
 receiveEvent = runExceptT $ do
     raw <- ExceptT receive
-    liftIO $ putStrLn $ "Got " ++ show raw
+    logDebug "receiveEvent" $ "Got " <> T.pack (show raw)
     ExceptT $ return $ decodeEvent raw
 
 -- | Sends a display request with the given display.
