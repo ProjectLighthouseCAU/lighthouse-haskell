@@ -138,7 +138,7 @@ sendRequest r = do
 receiveEvent :: LighthouseIO (Either T.Text ServerEvent)
 receiveEvent = runExceptT $ do
     raw <- ExceptT receive
-    logDebug "receiveEvent" $ "Got " <> T.pack (show raw)
+    logTrace "receiveEvent" $ "Got " <> T.pack (show raw)
     ExceptT $ return $ decodeEvent raw
 
 -- | Sends a display request with the given display.

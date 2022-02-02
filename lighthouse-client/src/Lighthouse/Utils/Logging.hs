@@ -2,14 +2,14 @@
 module Lighthouse.Utils.Logging
     ( -- * Logging levels
       LogLevel (..)
-    , errorLevel, warnLevel, infoLevel, debugLevel
+    , errorLevel, warnLevel, infoLevel, debugLevel, traceLevel
       -- * Log messages
     , LogMessage (..)
       -- * Log handling
     , LogHandler, simpleLogHandler
     , MonadLogger (..)
       -- * Convenience functions
-    , logError, logWarn, logInfo, logDebug
+    , logError, logWarn, logInfo, logDebug, logTrace
     ) where
 
 import Control.Monad (guard, void)
@@ -39,6 +39,10 @@ infoLevel = LogLevel 0 "INFO"
 -- | The log level for debug messages.
 debugLevel :: LogLevel
 debugLevel = LogLevel (-1) "DEBUG"
+
+-- | The log level for trace messages.
+traceLevel :: LogLevel
+traceLevel = LogLevel (-2) "TRACE"
 
 -- | A logged message along with a level to log it at and an origin.
 data LogMessage = LogMessage
@@ -90,3 +94,7 @@ logInfo o m = logMessage LogMessage { lmLevel = infoLevel, lmOrigin = o, lmMessa
 -- | Logs a message at the debug level.
 logDebug :: MonadLogger m => T.Text -> T.Text -> m ()
 logDebug o m = logMessage LogMessage { lmLevel = debugLevel, lmOrigin = o, lmMessage = m }
+
+-- | Logs a message at the trace level.
+logTrace :: MonadLogger m => T.Text -> T.Text -> m ()
+logTrace o m = logMessage LogMessage { lmLevel = traceLevel, lmOrigin = o, lmMessage = m }
