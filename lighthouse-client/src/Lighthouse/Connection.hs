@@ -2,7 +2,7 @@
 module Lighthouse.Connection
     ( -- * The LighthouseIO monad
       LighthouseIO (..), Listener (..)
-    , emptyListener, runLighthouseApp, runLighthouseIO
+    , runLighthouseApp, runLighthouseIO
       -- * Communication with the lighthouse
     , sendRequest, sendDisplay, requestStream, sendClose
     , receiveEvent
@@ -45,14 +45,21 @@ data Listener = Listener
     , onWarning :: T.Text     -> LighthouseIO ()
     }
 
--- | Creates an empty listener.
-emptyListener :: Listener
-emptyListener = Listener
-    { onConnect = return ()
-    , onInput   = \_ -> return ()
-    , onError   = \_ -> return ()
-    , onWarning = \_ -> return ()
-    }
+instance Semigroup Listener where
+    l1 <> l2 = Listener
+        { onConnect = onConnect l1 >> onConnect l2
+        , onInput   = \i -> onInput l1 i >> onInput l2 i
+        , onError   = \e -> onError l1 e >> onError l2 e
+        , onWarning = \w -> onWarning l1 w >> onWarning l2 w
+        }
+
+instance Monoid Listener where
+    mempty = Listener
+        { onConnect = return ()
+        , onInput   = \_ -> return ()
+        , onError   = \_ -> return ()
+        , onWarning = \_ -> return ()
+        }
 
 -- | Passes an event to the given listener.
 notifyListener :: ServerEvent -> Listener -> LighthouseIO ()

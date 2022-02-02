@@ -57,8 +57,8 @@ main = do
     args <- getArgs
     case args of
         [imagePath] -> runLighthouseApp listener auth
-            where listener = emptyListener { onConnect = app imagePath
-                                           , onError   = \e -> liftIO $ putStrLn $ "Error from server: " ++ T.unpack e
-                                           , onWarning = \w -> liftIO $ putStrLn $ "Warning from server: " ++ T.unpack w
-                                           }
+            where listener = mempty { onConnect = app imagePath
+                                    , onError   = \e -> liftIO $ putStrLn $ "Error from server: " ++ T.unpack e
+                                    , onWarning = \w -> liftIO $ putStrLn $ "Warning from server: " ++ T.unpack w
+                                    }
         _           -> putStrLn "Arguments: [path to png image]"
