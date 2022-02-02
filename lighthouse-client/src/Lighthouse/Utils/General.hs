@@ -5,6 +5,7 @@ module Lighthouse.Utils.General
     , whileM_
     ) where
 
+import Control.Monad (when)
 import Control.Monad.Trans.Maybe
 
 -- | Lifts an optional value into the maybe transformer.
@@ -49,7 +50,6 @@ f <$.> (x, y) = (x, f y)
 whileM_ :: Monad m => m Bool -> m a -> m ()
 whileM_ cond body = do
     c <- cond
-    if c then do
+    when c $ do
         body
         whileM_ cond body
-    else return ()
