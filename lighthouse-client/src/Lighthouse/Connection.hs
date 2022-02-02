@@ -2,7 +2,7 @@
 module Lighthouse.Connection
     ( -- * The LighthouseIO monad
       LighthouseIO (..), Listener (..)
-    , emptyListener, runLighthouseIO
+    , emptyListener, runLighthouseApp, runLighthouseIO
       -- * Communication with the lighthouse
     , sendRequest, sendDisplay, requestStream, sendClose
     , receiveEvent
@@ -62,24 +62,27 @@ notifyListener ServerErrorEvent {..} l = do
 notifyListener ServerInputEvent {..} l = onInput l seEvent
 
 -- | Runs a lighthouse application using the given credentials.
-runLighthouseIO :: [Listener] -> Authentication -> IO ()
-runLighthouseIO listeners auth = withSocketsDo $
+runLighthouseApp :: Listener -> Authentication -> IO ()
+runLighthouseApp listener = runLighthouseIO $ do
+    onConnect listener
+
+    -- Run event loop
+    whileM_ (not <$> gets csClosed) $ do
+        liftIO $ putStrLn $ "Receiving event..."
+        e <- receiveEvent
+
+        case e of
+            Left err -> liftIO $ putStrLn $ "Got unrecognized event: " ++ T.unpack err
+            Right e' -> do
+                liftIO $ putStrLn $ "Got event: " ++ show e'
+                notifyListener e' listener
+
+-- | Runs a single LighthouseIO using the given credentials.
+runLighthouseIO :: LighthouseIO a -> Authentication -> IO a
+runLighthouseIO lio auth = withSocketsDo $
     WSS.runSecureClient "lighthouse.uni-kiel.de" 443 "/websocket" $ \conn -> do
         let state = ConnectionState { csConnection = conn, csAuthentication = auth, csClosed = False, csRequestId = 0 }
-
-        flip evalStateT state $ do
-            mapM_ onConnect listeners
-
-            -- Run event loop
-            whileM_ (not <$> gets csClosed) $ do
-                liftIO $ putStrLn $ "Receiving event..."
-                e <- receiveEvent
-
-                case e of
-                    Left err -> liftIO $ putStrLn $ "Got unrecognized event: " ++ T.unpack err
-                    Right e' -> do
-                        liftIO $ putStrLn $ "Got event: " ++ show e'
-                        mapM_ (notifyListener e') listeners
+        evalStateT lio state
 
 -- | Sends raw, binary data directly to the lighthouse.
 sendBinaryData :: BL.ByteString -> LighthouseIO ()
