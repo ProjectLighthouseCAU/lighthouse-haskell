@@ -17,10 +17,11 @@ import Data.Foldable (sequence_)
 import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
-import Lighthouse.Authentication
 import Lighthouse.Display
+import Lighthouse.Options
 import Lighthouse.Protocol
 import Lighthouse.Utils.General (whileM_)
+import Lighthouse.Utils.Logging
 import Lighthouse.Utils.Serializable
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
@@ -29,9 +30,9 @@ import qualified Wuss as WSS
 -- | Stores the WebSocket connection and the credentials.
 data ConnectionState = ConnectionState
     { csConnection :: WS.Connection
-    , csAuthentication :: Authentication
-    , csRequestId :: Int
-    , csClosed :: Bool
+    , csOptions    :: Options
+    , csRequestId  :: Int
+    , csClosed     :: Bool
     }
 
 -- | The central IO monad to be used by lighthouse applications. Holds a connection.
@@ -69,7 +70,7 @@ notifyListener ServerErrorEvent {..} l = do
 notifyListener ServerInputEvent {..} l = onInput l seEvent
 
 -- | Runs a lighthouse application using the given credentials.
-runLighthouseApp :: Listener -> Authentication -> IO ()
+runLighthouseApp :: Listener -> Options -> IO ()
 runLighthouseApp listener = runLighthouseIO $ do
     onConnect listener
 
@@ -85,10 +86,10 @@ runLighthouseApp listener = runLighthouseIO $ do
                 notifyListener e' listener
 
 -- | Runs a single LighthouseIO using the given credentials.
-runLighthouseIO :: LighthouseIO a -> Authentication -> IO a
-runLighthouseIO lio auth = withSocketsDo $
+runLighthouseIO :: LighthouseIO a -> Options -> IO a
+runLighthouseIO lio opts = withSocketsDo $
     WSS.runSecureClient "lighthouse.uni-kiel.de" 443 "/websocket" $ \conn -> do
-        let state = ConnectionState { csConnection = conn, csAuthentication = auth, csClosed = False, csRequestId = 0 }
+        let state = ConnectionState { csConnection = conn, csOptions = opts, csClosed = False, csRequestId = 0 }
         evalStateT lio state
 
 -- | Sends raw, binary data directly to the lighthouse.
@@ -114,7 +115,7 @@ receive = deserialize <$> receiveBinaryData
 -- | Sends a request to the lighthouse.
 sendRequest :: ClientRequest -> LighthouseIO ()
 sendRequest r = do
-    auth <- gets csAuthentication
+    auth <- gets (optAuthentication . csOptions)
     reqId <- gets csRequestId
     modify $ \cs -> cs { csRequestId = reqId + 1 }
     send $ encodeRequest reqId auth r

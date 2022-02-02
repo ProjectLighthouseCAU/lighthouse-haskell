@@ -6,11 +6,12 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.Trans (lift, liftIO)
 import Control.Monad.Trans.Except
 import qualified Data.Text as T
-import Lighthouse.Authentication
 import Lighthouse.Connection
 import Lighthouse.Display
+import Lighthouse.Options
 import Lighthouse.Utils.Color
 import Lighthouse.Utils.General (liftMaybe)
+import Lighthouse.Utils.Logging (simpleLogHandler, infoLevel)
 import System.Environment (getArgs, getEnv)
 import System.Random
 
@@ -51,12 +52,13 @@ main = do
     -- Fetch credentials from env vars
     username <- T.pack <$> getEnv "LIGHTHOUSE_USERNAME"
     token    <- T.pack <$> getEnv "LIGHTHOUSE_TOKEN"
-    let auth = Authentication { username = username, token = token }
+    let auth  = Authentication { authUsername = username, authToken = token }
+        opts  = Options { optAuthentication = auth, optLogHandler = simpleLogHandler infoLevel }
 
     -- Render image to lighthouse
     args <- getArgs
     case args of
-        [imagePath] -> runLighthouseApp listener auth
+        [imagePath] -> runLighthouseApp listener opts
             where listener = mempty { onConnect = app imagePath
                                     , onError   = \e -> liftIO $ putStrLn $ "Error from server: " ++ T.unpack e
                                     , onWarning = \w -> liftIO $ putStrLn $ "Warning from server: " ++ T.unpack w

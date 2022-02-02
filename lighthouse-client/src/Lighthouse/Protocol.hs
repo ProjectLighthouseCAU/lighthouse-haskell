@@ -20,8 +20,8 @@ import Data.Traversable (traverse)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import Lighthouse.Authentication
 import Lighthouse.Display
+import Lighthouse.Options (Authentication (..))
 import Lighthouse.Utils.General ((<.$>), maybeToRight, rightToMaybe)
 import Lighthouse.Utils.MessagePack
 import Lighthouse.Utils.Serializable
@@ -45,17 +45,17 @@ data ClientMessage = ClientMessage
 
 -- | Encodes a ClientRequest to a ClientMessage.
 encodeRequest :: Int -> Authentication -> ClientRequest -> ClientMessage
-encodeRequest reqId auth (DisplayRequest disp) = ClientMessage
+encodeRequest reqId auth@(Authentication {..}) (DisplayRequest disp) = ClientMessage
     { cRequestId = reqId
     , cVerb = "PUT"
-    , cPath = ["user", username auth, "model"]
+    , cPath = ["user", authUsername, "model"]
     , cAuthentication = auth
     , cPayload = mpSerialize disp
     }
-encodeRequest reqId auth StreamRequest = ClientMessage
+encodeRequest reqId auth@(Authentication {..}) StreamRequest = ClientMessage
     { cRequestId = reqId
     , cVerb = "STREAM"
-    , cPath = ["user", username auth, "model"]
+    , cPath = ["user", authUsername, "model"]
     , cAuthentication = auth
     , cPayload = MP.ObjectNil
     }
@@ -65,7 +65,7 @@ instance MPSerializable ClientMessage where
         [ ("REID", mpInt cRequestId)
         , ("VERB", mpStr cVerb)
         , ("PATH", mpArray (mpStr <$> cPath))
-        , ("AUTH", mpMap [("USER", mpStr username), ("TOKEN", mpStr token)])
+        , ("AUTH", mpMap [("USER", mpStr authUsername), ("TOKEN", mpStr authToken)])
         , ("META", mpMap [])
         , ("PAYL", cPayload)
         ]
