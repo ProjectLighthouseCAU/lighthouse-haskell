@@ -12,8 +12,8 @@ module Lighthouse.Utils.Logging
     , logError, logWarn, logInfo, logDebug
     ) where
 
-import Control.Monad (guard)
-import Control.Monad.Trans (lift)
+import Control.Monad (guard, void)
+import Control.Monad.Trans (lift, MonadIO (..))
 import Control.Monad.Trans.Except (ExceptT (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Control.Monad.Trans.Maybe (MaybeT (..))
@@ -52,9 +52,9 @@ type LogHandler = LogMessage -> IO ()
 
 -- | A simple stdout-based log handler.
 simpleLogHandler :: LogLevel -> LogHandler
-simpleLogHandler handlerLevel LogMessage {..} = do
+simpleLogHandler handlerLevel LogMessage {..} = void $ runMaybeT $ do
     guard (llValue lmLevel >= llValue handlerLevel)
-    putStrLn $ T.unpack $ "[" <> llName lmLevel <> "] " <> lmOrigin <> ": " <> lmMessage
+    liftIO $ putStrLn $ T.unpack $ "[" <> llName lmLevel <> "] " <> lmOrigin <> ": " <> lmMessage
 
 class Monad m => MonadLogger m where
     -- | Logs the given message within the monad.

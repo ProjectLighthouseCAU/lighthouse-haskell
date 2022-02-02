@@ -88,7 +88,7 @@ runLighthouseApp listener = runLighthouseIO $ do
 
     -- Run event loop
     whileM_ (not <$> gets csClosed) $ do
-        logInfo "runLighthouseApp" $ "Receiving event..."
+        logInfo "runLighthouseApp" "Receiving event..."
         e <- receiveEvent
 
         case e of
