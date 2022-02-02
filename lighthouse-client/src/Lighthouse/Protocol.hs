@@ -45,14 +45,14 @@ data ClientMessage = ClientMessage
 
 -- | Encodes a ClientRequest to a ClientMessage.
 encodeRequest :: Int -> Authentication -> ClientRequest -> ClientMessage
-encodeRequest reqId auth@(Authentication {..}) (DisplayRequest disp) = ClientMessage
+encodeRequest reqId auth@Authentication {..} (DisplayRequest disp) = ClientMessage
     { cRequestId = reqId
     , cVerb = "PUT"
     , cPath = ["user", authUsername, "model"]
     , cAuthentication = auth
     , cPayload = mpSerialize disp
     }
-encodeRequest reqId auth@(Authentication {..}) StreamRequest = ClientMessage
+encodeRequest reqId auth@Authentication {..} StreamRequest = ClientMessage
     { cRequestId = reqId
     , cVerb = "STREAM"
     , cPath = ["user", authUsername, "model"]
