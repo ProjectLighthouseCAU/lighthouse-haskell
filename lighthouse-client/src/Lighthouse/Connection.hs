@@ -76,10 +76,12 @@ instance Monoid Listener where
 
 -- | Passes an event to the given listener.
 notifyListener :: ServerEvent -> Listener -> LighthouseIO ()
-notifyListener ServerErrorEvent {..} l = do
-    sequence_ (onError l <$> seError)
-    mapM_ (onWarning l) seWarnings
-notifyListener ServerInputEvent {..} l = onInput l seEvent
+notifyListener e l = case e of
+    ServerErrorEvent {..} -> do
+        sequence_ (onError l <$> seError)
+        mapM_ (onWarning l) seWarnings
+    ServerInputEvent {..} -> onInput l seEvent
+    _                     -> return ()
 
 -- | Runs a lighthouse application using the given credentials.
 runLighthouseApp :: Listener -> Options -> IO ()
@@ -88,7 +90,7 @@ runLighthouseApp listener = runLighthouseIO $ do
 
     -- Run event loop
     whileM_ (not <$> gets csClosed) $ do
-        logInfo "runLighthouseApp" "Receiving event..."
+        logDebug "runLighthouseApp" "Receiving event..."
         e <- receiveEvent
 
         case e of

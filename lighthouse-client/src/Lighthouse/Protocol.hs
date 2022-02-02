@@ -15,7 +15,7 @@ import Control.Monad ((<=<), guard)
 import qualified Data.ByteString.Lazy as BL
 import Data.Either (fromRight)
 import Data.Foldable (concat)
-import Data.Maybe (isJust, mapMaybe)
+import Data.Maybe (isJust, mapMaybe, fromMaybe)
 import Data.Traversable (traverse)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
@@ -80,8 +80,9 @@ instance Serializable ClientMessage where
 -- Server -> client messages
 
 -- | High-level server -> client message structure.
-data ServerEvent = ServerErrorEvent { seWarnings :: [T.Text], seError :: Maybe T.Text }
+data ServerEvent = ServerErrorEvent { seCode :: Int, seWarnings :: [T.Text], seError :: Maybe T.Text }
                  | ServerInputEvent { seEvent :: InputEvent }
+                 | ServerUnknownEvent { sePayload :: MP.Object }
     deriving (Show, Eq)
 
 -- | A key event emitted via the web interface.
@@ -110,9 +111,10 @@ data ServerMessage = ServerMessage
 -- | Decodes a ServerMessage to a ServerEvent.
 decodeEvent :: ServerMessage -> Either T.Text ServerEvent
 decodeEvent ServerMessage {..} = case sRNum of
-    200 -> ServerInputEvent <$> (mpDeserialize =<< maybeToRight "Could not decode as input, no payload" sPayload)
-    _ | (not (null sWarnings) || isJust sResponse) -> Left "Could not decode as error, no response/warnings!"
-      | otherwise                                  -> Right $ ServerErrorEvent sWarnings sResponse
+    200 -> do
+        payload <- maybeToRight "Could not decode as input, no payload" sPayload
+        Right $ fromRight (ServerUnknownEvent payload) $ ServerInputEvent <$> mpDeserialize payload
+    _   -> Right $ ServerErrorEvent sRNum sWarnings sResponse
 
 instance MPDeserializable ServerMessage where
     mpDeserialize (MP.ObjectMap vm) = do
