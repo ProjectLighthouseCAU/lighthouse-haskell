@@ -3,7 +3,7 @@ module Lighthouse.Display
       lighthouseRows, lighthouseCols
       -- * Display
     , Display (..), Row (..)
-    , emptyDisplay, coloredDisplay
+    , emptyDisplay, coloredDisplay, generateDisplay
     ) where
 
 import Control.Monad (join)
@@ -33,6 +33,11 @@ emptyDisplay = coloredDisplay black
 -- | A display with a uniformly colored background.
 coloredDisplay :: Color -> Display
 coloredDisplay c = Display $ Row (c <$ [0..lighthouseCols]) <$ [0..lighthouseRows]
+
+-- | Generates a display from the given function.
+generateDisplay :: (Int -> Int -> Color) -> Display
+generateDisplay pixAt = Display $ rowAt <$> [0..lighthouseRows - 1]
+    where rowAt y   = Row $ flip pixAt y <$> [0..lighthouseCols - 1]
 
 rowToList :: Row -> [Color]
 rowToList (Row xs) = xs
