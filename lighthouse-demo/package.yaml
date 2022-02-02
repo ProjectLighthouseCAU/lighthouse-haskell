@@ -8,9 +8,8 @@ copyright:           "2020 fwcd"
 extra-source-files:
 - README.md
 
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
+synopsis:            Demo of the Lighthouse API
+category:            Application
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
