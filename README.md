@@ -16,6 +16,8 @@ export LIGHTHOUSE_USERNAME=[your username]
 export LIGHTHOUSE_TOKEN=[your API token]
 ```
 
+> For this, you need a valid login at [lighthouse.uni-kiel.de](https://lighthouse.uni-kiel.de).
+
 You can now render a demo image to the lighthouse by running
 
 ```bash

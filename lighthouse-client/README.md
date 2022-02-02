@@ -1,2 +1,3 @@
 # Lighthouse API
-Library for the Lighthouse API.
+
+A library for the Project Lighthouse API.
