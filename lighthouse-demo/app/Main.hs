@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import qualified Codec.Picture as P
@@ -11,24 +12,27 @@ import Lighthouse.Display
 import Lighthouse.Options
 import Lighthouse.Utils.Color
 import Lighthouse.Utils.General (liftMaybe)
-import Lighthouse.Utils.Logging (simpleLogHandler, infoLevel)
+import Lighthouse.Utils.Logging (simpleLogHandler, infoLevel, logInfo)
 import System.Environment (getArgs, getEnv)
 import System.Random
 
 -- | Renders a single image to the lighthouse.
-app :: String -> LighthouseIO ()
-app imagePath = do
-    res <- runExceptT $ do
-        dimg <- liftEither =<< liftIO (P.readPng imagePath)
-        d <- liftEither $ dynImgToDisplay dimg
-        lift $ sendDisplay d
+app :: String -> Listener
+app imagePath = mempty
+    { onConnect = do
+        res <- runExceptT $ do
+            dimg <- liftEither =<< liftIO (P.readPng imagePath)
+            d <- liftEither $ dynImgToDisplay dimg
+            lift $ sendDisplay d
+            
+        case res of
+            Left e -> liftIO $ putStrLn e
+            _ -> return ()
         
-    case res of
-        Left e -> liftIO $ putStrLn e
-        _ -> return ()
-    
-    -- DEBUG
-    requestStream
+        -- Required to get input messages
+        requestStream
+    , onInput = \e -> logInfo "main" $ "Got input event: " <> T.pack (show e)
+    }
     -- sendClose
 
 dynImgToDisplay :: P.DynamicImage -> Either String Display
@@ -58,9 +62,5 @@ main = do
     -- Render image to lighthouse
     args <- getArgs
     case args of
-        [imagePath] -> runLighthouseApp listener opts
-            where listener = mempty { onConnect = app imagePath
-                                    , onError   = \e -> liftIO $ putStrLn $ "Error from server: " ++ T.unpack e
-                                    , onWarning = \w -> liftIO $ putStrLn $ "Warning from server: " ++ T.unpack w
-                                    }
+        [imagePath] -> runLighthouseApp (app imagePath) opts
         _           -> putStrLn "Arguments: [path to png image]"

@@ -15,7 +15,7 @@ import Control.Monad.Trans.Class (MonadTrans (..))
 import Control.Monad.Trans.Except (ExceptT (..), runExceptT)
 import Control.Monad.Trans.State (StateT, evalStateT)
 import qualified Data.ByteString.Lazy as BL
-import Data.Foldable (sequence_)
+import Data.Foldable (traverse_)
 import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
@@ -54,32 +54,23 @@ instance MonadLogger LighthouseIO where
 data Listener = Listener
     { onConnect :: LighthouseIO ()
     , onInput   :: InputEvent -> LighthouseIO ()
-    , onError   :: T.Text     -> LighthouseIO ()
-    , onWarning :: T.Text     -> LighthouseIO ()
     }
 
 instance Semigroup Listener where
     l1 <> l2 = Listener
         { onConnect = onConnect l1 >> onConnect l2
         , onInput   = \i -> onInput l1 i >> onInput l2 i
-        , onError   = \e -> onError l1 e >> onError l2 e
-        , onWarning = \w -> onWarning l1 w >> onWarning l2 w
         }
 
 instance Monoid Listener where
     mempty = Listener
         { onConnect = return ()
         , onInput   = \_ -> return ()
-        , onError   = \_ -> return ()
-        , onWarning = \_ -> return ()
         }
 
 -- | Passes an event to the given listener.
 notifyListener :: ServerEvent -> Listener -> LighthouseIO ()
 notifyListener e l = case e of
-    ServerErrorEvent {..} -> do
-        sequence_ (onError l <$> seError)
-        mapM_ (onWarning l) seWarnings
     ServerInputEvent {..} -> onInput l seEvent
     _                     -> return ()
 
@@ -91,13 +82,20 @@ runLighthouseApp listener = runLighthouseIO $ do
     -- Run event loop
     whileM_ (not <$> gets csClosed) $ do
         logDebug "runLighthouseApp" "Receiving event..."
-        e <- receiveEvent
+        eventOrErr <- receiveEvent
 
-        case e of
-            Left err -> logWarn "runLighthouseApp" $ "Got unrecognized event: " <> err
-            Right e' -> do
-                logDebug "runLighthouseApp" $ "Got event: " <> T.pack (show e')
-                notifyListener e' listener
+        case eventOrErr of
+            Left err -> logWarn "runLighthouseApp" $ "Could not parse event: " <> err
+            Right ServerErrorEvent {..} -> do
+                traverse_ onWarning seWarnings
+                traverse_ onError seError
+            Right ServerUnknownEvent {..} -> logDebug "runLighthouseApp" $ "Got unknown event: " <> T.pack (show sePayload)
+            Right event -> do
+                logDebug "runLighthouseApp" $ "Got event: " <> T.pack (show event)
+                notifyListener event listener
+    
+    where onWarning w = logWarn "runLighthouseApp" $ "Server warning: " <> w
+          onError   e = logError "runLighthouseApp" $ "Server error: " <> e
 
 -- | Runs a single LighthouseIO using the given credentials.
 runLighthouseIO :: LighthouseIO a -> Options -> IO a
