@@ -52,10 +52,8 @@ main = do
     -- Fetch credentials from env vars
     username <- T.pack <$> getEnv "LIGHTHOUSE_USERNAME"
     token    <- T.pack <$> getEnv "LIGHTHOUSE_TOKEN"
-    let opts  = Options { optAuthentication = Authentication { authUsername = username, authToken = token }
-                        , optLogHandler = simpleLogHandler infoLevel
-                        , optInitialState = ()
-                        }
+    let auth = Authentication { authUsername = username, authToken = token }
+        opts = (defaultOptions auth ()) { optLogHandler = simpleLogHandler infoLevel }
 
     -- Run the lighthouse app (that renders an image to the lighthouse)
     args <- getArgs

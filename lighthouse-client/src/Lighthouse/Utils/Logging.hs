@@ -6,7 +6,7 @@ module Lighthouse.Utils.Logging
       -- * Log messages
     , LogMessage (..)
       -- * Log handling
-    , LogHandler, simpleLogHandler
+    , LogHandler, simpleLogHandler, noopLogHandler
     , MonadLogger (..)
       -- * Convenience functions
     , logError, logWarn, logInfo, logDebug, logTrace
@@ -60,6 +60,10 @@ simpleLogHandler :: LogLevel -> LogHandler
 simpleLogHandler handlerLevel LogMessage {..} = void $ runMaybeT $ do
     guard (llValue lmLevel >= llValue handlerLevel)
     liftIO $ putStrLn $ T.unpack $ "[" <> llName lmLevel <> "] " <> lmOrigin <> ": " <> lmMessage
+
+-- | A log handler that swallows messages and outputs nothing.
+noopLogHandler :: LogHandler
+noopLogHandler = const $ return ()
 
 class Monad m => MonadLogger m where
     -- | Logs the given message within the monad.
