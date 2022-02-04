@@ -23,3 +23,5 @@ You can now render a demo image to the lighthouse by running
 ```bash
 stack run -- lighthouse-demo/assets/haskell-icon-lighthouse.png
 ```
+
+For a larger example, check out [`lighthouse-2048`](https://github.com/fwcd/lighthouse-2048), an implementation of the game [2048](https://en.wikipedia.org/wiki/2048_(video_game)) for the lighthouse.
