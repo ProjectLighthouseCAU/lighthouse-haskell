@@ -8,7 +8,7 @@ module Lighthouse.Connection
     , receiveEvent
     ) where
 
-import Control.Monad ((<=<))
+import Control.Monad ((<=<), when)
 import Control.Monad.State.Class (MonadState (..), gets, modify)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.Class (MonadTrans (..))
@@ -16,7 +16,7 @@ import Control.Monad.Trans.Except (ExceptT (..), runExceptT)
 import Control.Monad.Trans.State (StateT, evalStateT)
 import qualified Data.ByteString.Lazy as BL
 import Data.Foldable (traverse_)
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromJust, fromMaybe, isJust)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import Lighthouse.Display
@@ -87,10 +87,17 @@ runLighthouseApp listener = runLighthouseIO $ do
 
         case eventOrErr of
             Left err -> logWarn "runLighthouseApp" $ "Could not parse event: " <> err
+
             Right ServerErrorEvent {..} -> do
                 traverse_ onWarning seWarnings
                 traverse_ onError seError
+
+                closeOnError <- gets (optCloseOnError . csOptions)
+                when (isJust seError && closeOnError)
+                    sendClose
+
             Right ServerUnknownEvent {..} -> logDebug "runLighthouseApp" $ "Got unknown event: " <> T.pack (show sePayload)
+
             Right event -> do
                 logDebug "runLighthouseApp" $ "Got event: " <> T.pack (show event)
                 notifyListener event listener
