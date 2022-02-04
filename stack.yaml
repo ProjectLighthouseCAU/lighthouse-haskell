@@ -9,4 +9,5 @@ packages:
 - lighthouse-demo
 
 extra-deps:
+- random-1.2.1
 - msgpack-1.0.1.0
