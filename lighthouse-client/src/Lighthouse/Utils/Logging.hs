@@ -10,11 +10,12 @@ module Lighthouse.Utils.Logging
     , MonadLogger (..)
       -- * Convenience functions
     , logError, logWarn, logInfo, logDebug, logTrace
+    , runExceptTOrLog
     ) where
 
 import Control.Monad (guard, void)
 import Control.Monad.Trans (lift, MonadIO (..))
-import Control.Monad.Trans.Except (ExceptT (..))
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT)
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Control.Monad.Trans.State (StateT (..))
@@ -98,3 +99,11 @@ logDebug o m = logMessage LogMessage { lmLevel = debugLevel, lmOrigin = o, lmMes
 -- | Logs a message at the trace level.
 logTrace :: MonadLogger m => T.Text -> T.Text -> m ()
 logTrace o m = logMessage LogMessage { lmLevel = traceLevel, lmOrigin = o, lmMessage = m }
+
+-- | Runs the ExceptT transformer or logs if needed.
+runExceptTOrLog :: (MonadLogger m, Show e) => ExceptT e m a -> m ()
+runExceptTOrLog e = do
+    res <- runExceptT e
+    case res of
+        Left err -> logError "runExceptTOrLog" $ "Got error: " <> T.pack (show err)
+        Right x  -> return ()

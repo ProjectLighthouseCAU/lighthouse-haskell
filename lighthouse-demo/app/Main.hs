@@ -12,7 +12,7 @@ import Lighthouse.Display
 import Lighthouse.Options
 import Lighthouse.Utils.Color
 import Lighthouse.Utils.General (liftMaybe)
-import Lighthouse.Utils.Logging (simpleLogHandler, infoLevel, logInfo)
+import Lighthouse.Utils.Logging (simpleLogHandler, infoLevel, logInfo, logError, runExceptTOrLog)
 import System.Environment (getArgs, getEnv)
 import System.Random
 
@@ -20,18 +20,15 @@ import System.Random
 app :: String -> Listener ()
 app imagePath = mempty
     { onConnect = do
-        res <- runExceptT $ do
+        -- Render image to lighthouse
+        runExceptTOrLog $ do
             dimg <- liftEither =<< liftIO (P.readPng imagePath)
             d <- liftEither $ dynImgToDisplay dimg
             lift $ sendDisplay d
-            
-        case res of
-            Left e -> liftIO $ putStrLn e
-            _ -> return ()
         
         -- Required to get input messages
         requestStream
-    , onInput = \e -> logInfo "main" $ "Got input event: " <> T.pack (show e)
+    , onInput = \e -> logInfo "app" $ "Got input event: " <> T.pack (show e)
     }
     -- sendClose
 
@@ -60,7 +57,7 @@ main = do
                         , optInitialState = ()
                         }
 
-    -- Render image to lighthouse
+    -- Run the lighthouse app (that renders an image to the lighthouse)
     args <- getArgs
     case args of
         [imagePath] -> runLighthouseApp (app imagePath) opts
