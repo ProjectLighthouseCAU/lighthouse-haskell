@@ -6,7 +6,6 @@ module Lighthouse.Display
     , emptyDisplay, coloredDisplay, generateDisplay
     ) where
 
-import Control.Monad (join)
 import qualified Data.ByteString.Lazy as BL
 import Lighthouse.Utils.Color
 import Lighthouse.Utils.General

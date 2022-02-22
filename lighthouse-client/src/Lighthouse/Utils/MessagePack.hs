@@ -13,7 +13,6 @@ import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Lighthouse.Utils.General ((<.$>), maybeToRight)
-import Lighthouse.Utils.Serializable
 
 -- | Creates a MessagePack string.
 mpStr :: T.Text -> MP.Object

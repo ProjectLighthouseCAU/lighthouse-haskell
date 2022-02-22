@@ -110,4 +110,4 @@ runExceptTOrLog e = do
     res <- runExceptT e
     case res of
         Left err -> logError "runExceptTOrLog" $ "Got error: " <> T.pack (show err)
-        Right x  -> return ()
+        Right _  -> return ()

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Lighthouse.Protocol
     ( -- * Client -> server messages
       ClientRequest(..)
@@ -10,19 +11,15 @@ module Lighthouse.Protocol
     , decodeEvent
     ) where
 
-import Control.Applicative ((<|>))
-import Control.Monad ((<=<), guard)
+import Control.Monad ((<=<))
 import qualified Data.ByteString.Lazy as BL
 import Data.Either (fromRight)
-import Data.Foldable (concat)
-import Data.Maybe (isJust, mapMaybe, fromMaybe)
-import Data.Traversable (traverse)
 import qualified Data.MessagePack as MP
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Lighthouse.Display
 import Lighthouse.Options (Authentication (..))
-import Lighthouse.Utils.General ((<.$>), maybeToRight, rightToMaybe)
+import Lighthouse.Utils.General (maybeToRight, rightToMaybe)
 import Lighthouse.Utils.MessagePack
 import Lighthouse.Utils.Serializable
 
