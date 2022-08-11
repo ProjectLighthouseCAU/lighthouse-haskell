@@ -50,7 +50,7 @@ imgToDisplay img pixToColor = generateDisplay pixAt
 main :: IO ()
 main = do
     -- Fetch credentials from env vars
-    username <- T.pack <$> getEnv "LIGHTHOUSE_USERNAME"
+    username <- T.pack <$> getEnv "LIGHTHOUSE_USER"
     token    <- T.pack <$> getEnv "LIGHTHOUSE_TOKEN"
     let auth = Authentication { authUsername = username, authToken = token }
         opts = (defaultOptions auth ()) { optLogHandler = simpleLogHandler infoLevel }
