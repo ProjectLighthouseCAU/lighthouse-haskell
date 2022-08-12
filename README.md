@@ -12,7 +12,7 @@ An API client for a light installation at the University of Kiel written in Hask
 To run the demo, first set the following environment variables
 
 ```bash
-export LIGHTHOUSE_USERNAME=[your username]
+export LIGHTHOUSE_USER=[your username]
 export LIGHTHOUSE_TOKEN=[your API token]
 ```
 
