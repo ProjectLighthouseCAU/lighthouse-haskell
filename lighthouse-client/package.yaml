@@ -17,17 +17,17 @@ category:            Web
 description:         Please see the README on GitHub at <https://github.com/ProjectLighthouseCAU/project-lighthouse-haskell#readme>
 
 dependencies:
-- base         >= 4.14  && < 5
-- bytestring   >= 0.10  && < 0.11
-- text         >= 1.2   && < 1.3
-- random       >= 1.2.1 && < 1.3
-- mtl          >= 2.2   && < 2.3
-- transformers >= 0.5   && < 0.6
-- vector       >= 0.12  && < 0.13
-- msgpack      >= 1.0   && < 1.1
-- network      >= 3.1   && < 3.2
-- websockets   >= 0.12  && < 0.13
-- wuss         >= 1.1   && < 1.2
+- base         >= 4.17  && < 5
+- bytestring   >= 0.11  && < 1
+- text         >= 2.1   && < 3
+- random       >= 1.2.1 && < 2
+- mtl          >= 2.3   && < 3
+- transformers >= 0.6   && < 1
+- vector       >= 0.13  && < 1
+- msgpack      >= 1.0   && < 2
+- network      >= 3.1   && < 4
+- websockets   >= 0.12  && < 1
+- wuss         >= 2.0   && < 3
 
 library:
   source-dirs: src
