@@ -1,18 +1,18 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.5.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
 name:           lighthouse-client
 version:        0.1.0.0
-synopsis:       Project Lighthouse API client
-description:    Please see the README on GitHub at <https://github.com/fwcd/project-lighthouse-haskell#readme>
+synopsis:       Project Lighthouse client SDK
+description:    Please see the README on GitHub at <https://github.com/ProjectLighthouseCAU/project-lighthouse-haskell#readme>
 category:       Web
-homepage:       https://github.com/fwcd/project-lighthouse-haskell#readme
-bug-reports:    https://github.com/fwcd/project-lighthouse-haskell/issues
-author:         fwcd
-maintainer:     fwcd
+homepage:       https://github.com/ProjectLighthouseCAU/project-lighthouse-haskell#readme
+bug-reports:    https://github.com/ProjectLighthouseCAU/project-lighthouse-haskell/issues
+author:         Project Lighthouse team
+maintainer:     Project Lighthouse team
 copyright:      2020 fwcd
 license:        BSD3
 build-type:     Simple
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/fwcd/project-lighthouse-haskell
+  location: https://github.com/ProjectLighthouseCAU/project-lighthouse-haskell
 
 library
   exposed-modules:

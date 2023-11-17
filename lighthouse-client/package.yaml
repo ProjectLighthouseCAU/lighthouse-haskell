@@ -1,20 +1,20 @@
 name:                lighthouse-client
 version:             0.1.0.0
-github:              "fwcd/project-lighthouse-haskell"
+github:              "ProjectLighthouseCAU/project-lighthouse-haskell"
 license:             BSD3
-author:              "fwcd"
+author:              "Project Lighthouse team"
 copyright:           "2020 fwcd"
 
 extra-source-files:
 - README.md
 
-synopsis:            Project Lighthouse API client
+synopsis:            Project Lighthouse client SDK
 category:            Web
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/fwcd/project-lighthouse-haskell#readme>
+description:         Please see the README on GitHub at <https://github.com/ProjectLighthouseCAU/project-lighthouse-haskell#readme>
 
 dependencies:
 - base         >= 4.14  && < 5
