@@ -9,9 +9,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Haskell Stack
-      uses: haskell/actions/setup@v1
+      uses: haskell-actions/setup@v2
       with:
         enable-stack: true
         stack-version: 'latest'
