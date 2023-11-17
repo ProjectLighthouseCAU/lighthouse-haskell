@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           lighthouse-client
-version:        0.1.0.0
+version:        0.2.0.0
 synopsis:       Project Lighthouse client SDK
 description:    Please see the README on GitHub at <https://github.com/ProjectLighthouseCAU/project-lighthouse-haskell#readme>
 category:       Web

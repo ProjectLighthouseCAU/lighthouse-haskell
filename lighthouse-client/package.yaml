@@ -1,5 +1,5 @@
 name:                lighthouse-client
-version:             0.1.0.0
+version:             0.2.0.0
 github:              "ProjectLighthouseCAU/project-lighthouse-haskell"
 license:             BSD3
 author:              "Project Lighthouse team"
