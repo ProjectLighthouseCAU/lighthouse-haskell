@@ -4,12 +4,26 @@ on:
   push:
     branches:
     - main
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  docs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Set up Pages
+      uses: actions/configure-pages@v3
     - name: Set up Haskell Stack
       uses: haskell-actions/setup@v2
       with:
@@ -21,10 +35,18 @@ jobs:
         dist_dir=$(stack path --dist-dir)
         pkg_name=lighthouse-client
         cp -r $pkg_name/$dist_dir/doc/html/$pkg_name doc
-    - name: Deploy Docs
-      uses: peaceiris/actions-gh-pages@v3
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./doc
-        user_name: 'github-actions[bot]'
-        user_email: 'github-actions[bot]@users.noreply.github.com'
+        path: ./doc
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: docs
+
+    steps:
+    - name: Deploy Docs
+      uses: actions/deploy-pages@v2
